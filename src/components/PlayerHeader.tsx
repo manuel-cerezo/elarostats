@@ -1,0 +1,34 @@
+import type { Player } from "../types/player";
+import { getHeadshotUrl } from "../utils/playerStats";
+import { PLAYER_HEADSHOT_FALLBACK_URL } from "../constants/player";
+
+interface PlayerHeaderProps {
+  player: Player;
+}
+
+export default function PlayerHeader({ player }: PlayerHeaderProps) {
+  return (
+    <div className="flex items-center gap-4">
+      <img
+        src={getHeadshotUrl(player.nba_id)}
+        alt={player.Name}
+        className="h-20 w-20 rounded-full border-2 border-gray-700 object-cover"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src =
+            PLAYER_HEADSHOT_FALLBACK_URL;
+        }}
+      />
+      <div>
+        <h2 className="text-2xl font-extrabold text-white">{player.Name}</h2>
+        <p className="text-sm text-gray-400">
+          {player.TeamAbbreviation} · {player.Pos2}
+        </p>
+        {player["Offensive Archetype"] && (
+          <span className="mt-1 inline-block rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-400">
+            {player["Offensive Archetype"]}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
