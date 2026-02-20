@@ -1,23 +1,7 @@
 import playersData from "../data/players.json";
+import type { Player } from "../types/player";
 
-export interface Player {
-  Name: string;
-  ShortName: string;
-  TeamAbbreviation: string;
-  Pos2: string;
-  nba_id: number;
-  MPG: number;
-  GamesPlayed: number;
-  Minutes: number;
-  TS_pct: number;
-  dpm: number;
-  o_dpm: number;
-  d_dpm: number;
-  three_year_rapm: number;
-  Pts75: number;
-  "Offensive Archetype": string;
-  [key: string]: unknown;
-}
+export type { Player };
 
 const players = playersData as Player[];
 
