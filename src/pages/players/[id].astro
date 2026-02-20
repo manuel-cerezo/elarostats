@@ -5,8 +5,8 @@ import { formatPlayerStats, getHeadshotUrl } from "../../utils/playerStats";
 import { PLAYER_HEADSHOT_FALLBACK_URL } from "../../constants/player";
 import PlayerPageSearch from "../../components/PlayerPageSearch";
 
-export function getStaticPaths() {
-  const players = getAllPlayers();
+export async function getStaticPaths() {
+  const players = await getAllPlayers();
   return players.map((player) => ({
     params: { id: String(player.nba_id) },
     props: { player },

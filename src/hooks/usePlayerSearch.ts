@@ -25,8 +25,8 @@ export function usePlayerSearch(): UsePlayerSearchReturn {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
-  function search(value: string) {
-    const found = searchPlayers(value);
+  async function search(value: string) {
+    const found = await searchPlayers(value);
     const sliced = found.slice(0, MAX_SEARCH_RESULTS);
     setResults(sliced);
     setIsOpen(sliced.length > 0);
@@ -35,12 +35,12 @@ export function usePlayerSearch(): UsePlayerSearchReturn {
 
   function handleQueryChange(value: string) {
     setQuery(value);
-    search(value);
+    void search(value);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    search(query);
+    void search(query);
   }
 
   function handleSelectPlayer(player: Player) {

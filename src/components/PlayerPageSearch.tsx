@@ -15,11 +15,12 @@ export default function PlayerPageSearch() {
 
   function handleChange(value: string) {
     setQuery(value);
-    const found = searchPlayers(value);
-    const sliced = found.slice(0, MAX_SEARCH_RESULTS);
-    setResults(sliced);
-    setIsOpen(sliced.length > 0);
-    setActiveIndex(-1);
+    void searchPlayers(value).then((found) => {
+      const sliced = found.slice(0, MAX_SEARCH_RESULTS);
+      setResults(sliced);
+      setIsOpen(sliced.length > 0);
+      setActiveIndex(-1);
+    });
   }
 
   function navigateToPlayer(player: Player) {
