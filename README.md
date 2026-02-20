@@ -25,3 +25,11 @@ Open [http://localhost:4321](http://localhost:4321) in your browser.
 ## API
 
 [https://api.pbpstats.com/docs#/](https://api.pbpstats.com/docs#/)
+
+## Data Sources
+
+Player stats and metrics are sourced from [databallr](https://api.databallr.com):
+
+```
+https://api.databallr.com/api/supabase/player_stats_with_metrics?year=2026&playoffs=0&min_minutes=50&limit=500&order_by=dpm&order_direction=desc
+```
