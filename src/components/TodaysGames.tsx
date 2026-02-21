@@ -77,7 +77,7 @@ export default function TodaysGames() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-800" />
         ))}
@@ -98,7 +98,7 @@ export default function TodaysGames() {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {games.map((game) => (
         <GameCard key={game.gameid} game={game} onClick={handleGameClick} />
       ))}
