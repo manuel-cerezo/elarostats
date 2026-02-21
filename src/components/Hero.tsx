@@ -1,4 +1,4 @@
-import { usePlayerSearch } from "../hooks/usePlayerSearch";
+import { useSearch } from "../hooks/useSearch";
 import { useClickOutside } from "../hooks/useClickOutside";
 import { useTranslation } from "../hooks/useTranslation";
 import SearchInput from "./SearchInput";
@@ -14,17 +14,17 @@ export default function Hero() {
     activeIndex,
     handleQueryChange,
     handleSubmit,
-    handleSelectPlayer,
+    handleSelect,
     handleCloseDropdown,
     handleKeyDown,
     setActiveIndex,
-  } = usePlayerSearch();
+  } = useSearch();
 
   const containerRef = useClickOutside<HTMLDivElement>(handleCloseDropdown);
   const { t } = useTranslation();
 
   return (
-    <section className="flex flex-col items-center justify-center gap-6 px-4 py-24 text-center">
+    <section className="flex flex-col items-center justify-center gap-6 px-4 py-16 text-center">
       <div className="absolute right-6 top-4 flex items-center gap-2">
         <ThemeToggle />
         <LanguageSelector />
@@ -47,7 +47,7 @@ export default function Hero() {
           <SearchDropdown
             results={results}
             activeIndex={activeIndex}
-            onSelect={handleSelectPlayer}
+            onSelect={handleSelect}
             onHover={setActiveIndex}
           />
         )}

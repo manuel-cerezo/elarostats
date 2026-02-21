@@ -1,64 +1,104 @@
-import { useMemo, useRef, useState } from "react";
-import { useAllPlayers } from "../hooks/useAllPlayers";
+import { useRef } from "react";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { useSearch } from "../hooks/useSearch";
 import { useTranslation } from "../hooks/useTranslation";
-import type { Player } from "../types/player";
-import { MAX_SEARCH_RESULTS } from "../constants/player";
+import type { SearchResult } from "../hooks/useSearch";
 
 export default function PlayerPageSearch() {
-  const [query, setQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
+  const {
+    query,
+    results,
+    isOpen,
+    isLoading,
+    activeIndex,
+    handleQueryChange,
+    handleSelect,
+    handleCloseDropdown,
+    setActiveIndex,
+  } = useSearch();
 
-  const { data: allPlayers = [], isLoading } = useAllPlayers();
   const { t } = useTranslation();
-
-  const containerRef = useClickOutside<HTMLDivElement>(() => setIsOpen(false));
+  const containerRef = useClickOutside<HTMLDivElement>(handleCloseDropdown);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Filtrado client-side sobre los datos cacheados por TanStack Query
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase().trim();
-    return allPlayers
-      .filter(
-        (p) =>
-          p.Name?.toLowerCase().includes(q) ||
-          p.ShortName?.toLowerCase().includes(q) ||
-          p.TeamAbbreviation?.toLowerCase().includes(q),
-      )
-      .slice(0, MAX_SEARCH_RESULTS);
-  }, [query, allPlayers]);
-
-  function handleChange(value: string) {
-    setQuery(value);
-    setIsOpen(value.trim().length > 0);
-    setActiveIndex(-1);
-  }
-
-  function navigateToPlayer(player: Player) {
-    window.location.href = `/players/${player.nba_id}`;
-  }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (!isOpen) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, results.length - 1));
+      setActiveIndex(Math.min(activeIndex + 1, results.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIndex((i) => Math.max(i - 1, -1));
+      setActiveIndex(Math.max(activeIndex - 1, -1));
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (activeIndex >= 0 && results[activeIndex]) {
-        navigateToPlayer(results[activeIndex]);
+        handleSelect(results[activeIndex]);
       }
     } else if (e.key === "Escape") {
-      setIsOpen(false);
-      setActiveIndex(-1);
+      handleCloseDropdown();
       inputRef.current?.blur();
     }
+  }
+
+  function renderResult(result: SearchResult, index: number) {
+    const isActive = index === activeIndex;
+    const baseClass = `flex w-full cursor-pointer items-center justify-between px-4 py-3 text-sm transition ${
+      isActive
+        ? "bg-gray-100 dark:bg-gray-700"
+        : "hover:bg-gray-50 dark:hover:bg-gray-800"
+    }`;
+
+    if (result.type === "player") {
+      const { player } = result;
+      return (
+        <li key={`player-${player.nba_id}`} role="option" aria-selected={isActive}>
+          <button
+            type="button"
+            className={baseClass}
+            onClick={() => handleSelect(result)}
+            onMouseEnter={() => setActiveIndex(index)}
+          >
+            <div className="flex flex-col text-left">
+              <span className="font-medium text-gray-900 dark:text-white">{player.Name}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {player.TeamAbbreviation} · {player.Pos2}
+              </span>
+            </div>
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              {player.MPG?.toFixed(1)} MPG
+            </span>
+          </button>
+        </li>
+      );
+    }
+
+    return (
+      <li key={`team-${result.teamId}`} role="option" aria-selected={isActive}>
+        <button
+          type="button"
+          className={baseClass}
+          onClick={() => handleSelect(result)}
+          onMouseEnter={() => setActiveIndex(index)}
+        >
+          <div className="flex items-center gap-2 text-left">
+            <img
+              src={`/teams/${result.teamId}.svg`}
+              alt={result.abbreviation}
+              className="h-5 w-5 flex-shrink-0 object-contain"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+            <div className="flex flex-col">
+              <span className="font-medium text-gray-900 dark:text-white">{result.teamName}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{result.location}</span>
+            </div>
+          </div>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{result.abbreviation}</span>
+        </button>
+      </li>
+    );
   }
 
   return (
@@ -67,7 +107,7 @@ export default function PlayerPageSearch() {
         ref={inputRef}
         type="text"
         value={query}
-        onChange={(e) => handleChange(e.target.value)}
+        onChange={(e) => handleQueryChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={isLoading ? t("loadingPlayers") : t("searchPlaceholder")}
         disabled={isLoading}
@@ -80,30 +120,7 @@ export default function PlayerPageSearch() {
           role="listbox"
           className="absolute right-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
         >
-          {results.map((player, index) => (
-            <li key={player.nba_id} role="option" aria-selected={index === activeIndex}>
-              <button
-                type="button"
-                className={`flex w-full cursor-pointer items-center justify-between px-4 py-3 text-sm transition ${
-                  index === activeIndex
-                    ? "bg-gray-100 dark:bg-gray-700"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                }`}
-                onClick={() => navigateToPlayer(player)}
-                onMouseEnter={() => setActiveIndex(index)}
-              >
-                <div className="flex flex-col text-left">
-                  <span className="font-medium text-gray-900 dark:text-white">{player.Name}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {player.TeamAbbreviation} · {player.Pos2}
-                  </span>
-                </div>
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {player.MPG?.toFixed(1)} MPG
-                </span>
-              </button>
-            </li>
-          ))}
+          {results.map((result, index) => renderResult(result, index))}
         </ul>
       )}
     </div>
