@@ -66,6 +66,22 @@ export const en = {
   fg3PctTitle: "Three-point percentage",
   plusMinusTitle: "Point differential for the season",
 
+  // Players leaderboard page
+  navPlayers: "Players",
+  playersPageTitle: "NBA Players",
+  playersSeason: "2025-26 Season · Regular Season",
+  errorLoadingPlayersLeaderboard: "Could not load player data.",
+  searchPlayerPlaceholder: "Search a player...",
+  noPlayersFound: "No players found.",
+  ppgTitle: "Points per game",
+  rpgTitle: "Rebounds per game",
+  apgTitle: "Assists per game",
+  spgTitle: "Steals per game",
+  bpgTitle: "Blocks per game",
+  mpgTitle: "Minutes per game",
+  efgPctTitle: "Effective field goal percentage",
+  tsPctTitle: "True shooting percentage",
+
   // Live game
   updatedSecondsAgo: "Updated {seconds}s ago",
   updatedJustNow: "Updated just now",

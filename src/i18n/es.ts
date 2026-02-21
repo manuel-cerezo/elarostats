@@ -66,6 +66,22 @@ export const es = {
   fg3PctTitle: "Porcentaje de triples",
   plusMinusTitle: "Diferencial de puntos en la temporada",
 
+  // Página de leaderboard de jugadores
+  navPlayers: "Jugadores",
+  playersPageTitle: "Jugadores NBA",
+  playersSeason: "Temporada 2025-26 · Regular Season",
+  errorLoadingPlayersLeaderboard: "No se pudieron cargar los datos de jugadores.",
+  searchPlayerPlaceholder: "Busca un jugador...",
+  noPlayersFound: "No se encontraron jugadores.",
+  ppgTitle: "Puntos por partido",
+  rpgTitle: "Rebotes por partido",
+  apgTitle: "Asistencias por partido",
+  spgTitle: "Robos por partido",
+  bpgTitle: "Tapones por partido",
+  mpgTitle: "Minutos por partido",
+  efgPctTitle: "Porcentaje efectivo de tiro de campo",
+  tsPctTitle: "Porcentaje de tiro verdadero",
+
   // Live game
   updatedSecondsAgo: "Actualizado hace {seconds}s",
   updatedJustNow: "Actualizado hace unos segundos",
