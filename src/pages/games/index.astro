@@ -1,10 +1,10 @@
 ---
 import Layout from "../../layouts/Layout.astro";
-import GamesView from "../../components/GamesView";
+import GamesViewWithQuery from "../../components/GamesViewWithQuery";
 ---
 
 <Layout title="Partidos — elarostats">
   <main class="mx-auto max-w-3xl px-4 py-8">
-    <GamesView client:only="react" />
+    <GamesViewWithQuery client:only="react" />
   </main>
 </Layout>
