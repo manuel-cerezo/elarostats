@@ -1,26 +1,37 @@
-import { useState, useRef } from "react";
-import { searchPlayers } from "../api/local";
+import { useMemo, useRef, useState } from "react";
+import { useAllPlayers } from "../hooks/useAllPlayers";
 import { useClickOutside } from "../hooks/useClickOutside";
 import type { Player } from "../types/player";
 import { MAX_SEARCH_RESULTS } from "../constants/player";
 
 export default function PlayerPageSearch() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Player[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+
+  const { data: allPlayers = [], isLoading } = useAllPlayers();
 
   const containerRef = useClickOutside<HTMLDivElement>(() => setIsOpen(false));
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Filtrado client-side sobre los datos cacheados por TanStack Query
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase().trim();
+    return allPlayers
+      .filter(
+        (p) =>
+          p.Name?.toLowerCase().includes(q) ||
+          p.ShortName?.toLowerCase().includes(q) ||
+          p.TeamAbbreviation?.toLowerCase().includes(q),
+      )
+      .slice(0, MAX_SEARCH_RESULTS);
+  }, [query, allPlayers]);
+
   function handleChange(value: string) {
     setQuery(value);
-    void searchPlayers(value).then((found) => {
-      const sliced = found.slice(0, MAX_SEARCH_RESULTS);
-      setResults(sliced);
-      setIsOpen(sliced.length > 0);
-      setActiveIndex(-1);
-    });
+    setIsOpen(value.trim().length > 0);
+    setActiveIndex(-1);
   }
 
   function navigateToPlayer(player: Player) {
@@ -56,8 +67,9 @@ export default function PlayerPageSearch() {
         value={query}
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Search a player..."
-        className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:border-orange-500"
+        placeholder={isLoading ? "Loading players…" : "Search a player..."}
+        disabled={isLoading}
+        className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:border-orange-500 disabled:opacity-50"
         autoComplete="off"
         aria-label="Search players"
       />
