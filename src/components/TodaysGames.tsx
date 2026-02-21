@@ -25,40 +25,40 @@ function GameCard({ game, onClick }: GameCardProps) {
     <button
       onClick={() => onClick(game.gameid)}
       aria-label={`${game.awayTeam} at ${game.homeTeam}`}
-      className="flex w-full flex-col gap-2 rounded-xl border border-gray-700 bg-gray-800/60 p-4 text-left transition-colors hover:border-orange-500/50 hover:bg-gray-800"
+      className="flex min-w-[250px] flex-col gap-1.5 rounded-xl border border-gray-700 bg-gray-800/60 px-3 py-3 text-left transition-colors hover:border-orange-500/50 hover:bg-gray-800"
     >
-      <div className="flex items-center justify-center gap-3">
-        {/* Away team */}
-        {awayLogo && (
-          <img
-            src={awayLogo}
-            alt={game.awayTeam}
-            className="h-7 w-7 flex-shrink-0 object-contain"
-          />
-        )}
-        <span className="text-sm font-semibold text-gray-200">{game.awayTeam}</span>
+      {/* Matchup row: away | score | home */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2">
+        {/* Away — right-aligned */}
+        <div className="flex items-center justify-end gap-1.5">
+          {awayLogo && (
+            <img src={awayLogo} alt={game.awayTeam} className="h-6 w-6 flex-shrink-0 object-contain" />
+          )}
+          <span className="text-sm font-semibold text-gray-200">{game.awayTeam}</span>
+        </div>
 
+        {/* Score center */}
         {hasStarted ? (
-          <>
-            <span className="text-lg font-bold tabular-nums text-white">{game.awayScore}</span>
-            <span className="text-xs text-gray-500">–</span>
-            <span className="text-lg font-bold tabular-nums text-white">{game.homeScore}</span>
-          </>
+          <span className="text-center text-base font-bold tabular-nums text-white">
+            {game.awayScore}
+            <span className="mx-0.5 text-xs font-normal text-gray-500">–</span>
+            {game.homeScore}
+          </span>
         ) : (
-          <span className="text-xs text-gray-500">vs</span>
+          <span className="text-center text-xs text-gray-500">vs</span>
         )}
 
-        <span className="text-sm font-semibold text-gray-200">{game.homeTeam}</span>
-        {homeLogo && (
-          <img
-            src={homeLogo}
-            alt={game.homeTeam}
-            className="h-7 w-7 flex-shrink-0 object-contain"
-          />
-        )}
+        {/* Home — left-aligned */}
+        <div className="flex items-center justify-start gap-1.5">
+          <span className="text-sm font-semibold text-gray-200">{game.homeTeam}</span>
+          {homeLogo && (
+            <img src={homeLogo} alt={game.homeTeam} className="h-6 w-6 flex-shrink-0 object-contain" />
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center justify-center gap-2">
+      {/* Status row */}
+      <div className="flex items-center justify-center">
         {game.isLive && (
           <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-medium text-red-400">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
@@ -77,7 +77,7 @@ export default function TodaysGames() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-800" />
         ))}
@@ -98,7 +98,7 @@ export default function TodaysGames() {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
       {games.map((game) => (
         <GameCard key={game.gameid} game={game} onClick={handleGameClick} />
       ))}
