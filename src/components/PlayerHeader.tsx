@@ -32,12 +32,18 @@ export default function PlayerHeader({ player }: PlayerHeaderProps) {
             </span>
           )}
         </div>
-        {teamLogoUrl && (
-          <img
-            src={teamLogoUrl}
-            alt={player.TeamAbbreviation}
-            className="h-14 w-14 flex-shrink-0 object-contain opacity-90"
-          />
+        {teamLogoUrl && player.TeamId && (
+          <a
+            href={`/teams/${player.TeamId}`}
+            title={player.TeamAbbreviation}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={teamLogoUrl}
+              alt={player.TeamAbbreviation}
+              className="h-14 w-14 flex-shrink-0 object-contain opacity-90 transition hover:opacity-100"
+            />
+          </a>
         )}
       </div>
     </div>

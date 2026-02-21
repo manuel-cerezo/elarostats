@@ -1,11 +1,13 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import HeroWithQuery from "../components/HeroWithQuery";
+import TeamsGridWithQuery from "../components/TeamsGridWithQuery";
 import "../styles/global.css";
 ---
 
 <Layout title="elarostats — NBA Stats & Analytics">
-  <main>
+  <main class="flex flex-col items-center gap-12 px-4 pb-16">
     <HeroWithQuery client:only="react" />
+    <TeamsGridWithQuery client:only="react" />
   </main>
 </Layout>

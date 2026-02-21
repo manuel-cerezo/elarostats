@@ -73,12 +73,14 @@ const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
           }
         </div>
         {
-          teamLogoUrl && (
-            <img
-              src={teamLogoUrl}
-              alt={player.TeamAbbreviation}
-              class="h-20 w-20 flex-shrink-0 object-contain opacity-90"
-            />
+          teamLogoUrl && player.TeamId && (
+            <a href={`/teams/${player.TeamId}`} title={player.TeamAbbreviation}>
+              <img
+                src={teamLogoUrl}
+                alt={player.TeamAbbreviation}
+                class="h-20 w-20 flex-shrink-0 object-contain opacity-90 transition hover:opacity-100"
+              />
+            </a>
           )
         }
       </div>
