@@ -7,7 +7,7 @@ interface PlayerHeaderProps {
 }
 
 export default function PlayerHeader({ player }: PlayerHeaderProps) {
-  const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
+  const teamLogoUrl = getTeamLogoUrl(player.TeamId);
 
   return (
     <div className="flex items-center gap-4">

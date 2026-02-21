@@ -1,5 +1,10 @@
+import { ReactQueryProvider } from "../lib/ReactQueryProvider";
 import LiveScores from "./LiveScores";
 
 export default function LiveScoresIsland() {
-  return <LiveScores />;
+  return (
+    <ReactQueryProvider>
+      <LiveScores />
+    </ReactQueryProvider>
+  );
 }

@@ -16,5 +16,6 @@ export interface Player {
   FT_PERC: number;
   "Offensive Archetype": string;
   "3P_PERC": number;
+  TeamId?: number;
   [key: string]: unknown;
 }

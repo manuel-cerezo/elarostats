@@ -1,6 +1,9 @@
 export const es = {
   // Navegación
   back: "Volver",
+  navHome: "Inicio",
+  navGames: "Partidos",
+  navTeams: "Equipos",
 
   // Buscador
   search: "Buscar",
@@ -61,4 +64,14 @@ export const es = {
   paceTitle: "Ritmo de juego (posesiones por 48 min)",
   fg3PctTitle: "Porcentaje de triples",
   plusMinusTitle: "Diferencial de puntos en la temporada",
+
+  // Live game
+  updatedSecondsAgo: "Actualizado hace {seconds}s",
+  updatedJustNow: "Actualizado hace unos segundos",
+  liveTag: "EN VIVO",
+  gameNotStarted:
+    "El partido aún no ha comenzado. Los datos en vivo aparecerán aquí cuando empiece.",
+  gameNotFound: "Partido no encontrado.",
+  backToHome: "Volver al inicio",
+  dataSource: "Fuente: pbpstats.com · Datos actualizados en tiempo real",
 } as const;

@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useLiveGame } from "../hooks/useLiveGame";
 import { useTodaysGames } from "../hooks/useTodaysGames";
+import { useTranslation } from "../hooks/useTranslation";
 import teamsData from "../data/teams.json";
 
-const abbrToTeamId = new Map<string, number>(
-  teamsData.map((t) => [t.abbreviation, t.teamId]),
-);
+const abbrToTeamId = new Map<string, number>(teamsData.map((t) => [t.abbreviation, t.teamId]));
 
 function teamLogoUrl(abbr: string): string | undefined {
   const id = abbrToTeamId.get(abbr.toUpperCase());
@@ -52,13 +51,9 @@ function TeamStatsBox({ label, abbr, score, stats }: TeamStatsBoxProps) {
 
   return (
     <div className="flex flex-1 flex-col items-center gap-3 rounded-xl bg-gray-800/60 p-4">
-      <span className="text-xs font-medium uppercase tracking-wider text-gray-500">
-        {label}
-      </span>
+      <span className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</span>
       <div className="flex items-center gap-3">
-        {logo && (
-          <img src={logo} alt={abbr} className="h-10 w-10 object-contain" />
-        )}
+        {logo && <img src={logo} alt={abbr} className="h-10 w-10 object-contain" />}
         <span className="text-4xl font-black text-white">{score}</span>
       </div>
       <p className="text-sm font-semibold text-gray-300">{abbr}</p>
@@ -147,19 +142,18 @@ interface PlayerTableProps {
 function PlayerTable({ label, abbr, players }: PlayerTableProps) {
   const logo = teamLogoUrl(abbr);
   const rows = players.map(parsePlayerRow);
+  const { t } = useTranslation();
 
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-700 bg-gray-800/40">
       <div className="flex items-center gap-2 border-b border-gray-700 px-4 py-3">
-        {logo && (
-          <img src={logo} alt={abbr} className="h-5 w-5 object-contain" />
-        )}
+        {logo && <img src={logo} alt={abbr} className="h-5 w-5 object-contain" />}
         <span className="text-sm font-semibold text-gray-200">{label}</span>
       </div>
       <table className="w-full text-xs">
         <thead>
           <tr className="text-gray-500">
-            <th className="px-4 py-2 text-left font-medium">Jugador</th>
+            <th className="px-4 py-2 text-left font-medium">{t("player")}</th>
             <th className="px-2 py-2 text-right font-medium">MIN</th>
             <th className="px-2 py-2 text-right font-medium">PTS</th>
             <th className="px-2 py-2 text-right font-medium">REB</th>
@@ -174,10 +168,7 @@ function PlayerTable({ label, abbr, players }: PlayerTableProps) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr
-              key={i}
-              className="border-t border-gray-700/50 text-gray-300 hover:bg-gray-700/30"
-            >
+            <tr key={i} className="border-t border-gray-700/50 text-gray-300 hover:bg-gray-700/30">
               <td className="px-4 py-2 font-medium text-white">{row.name}</td>
               <td className="px-2 py-2 text-right text-gray-400">{row.minutes}</td>
               <td className="px-2 py-2 text-right font-semibold text-white">{row.pts}</td>
@@ -213,6 +204,7 @@ function PlayerTable({ label, abbr, players }: PlayerTableProps) {
 
 function LastUpdated({ dataUpdatedAt }: { dataUpdatedAt: number }) {
   const [secondsAgo, setSecondsAgo] = useState(0);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const update = () => {
@@ -225,7 +217,9 @@ function LastUpdated({ dataUpdatedAt }: { dataUpdatedAt: number }) {
 
   return (
     <span className="text-xs text-gray-500">
-      Actualizado hace {secondsAgo < 5 ? "unos segundos" : `${secondsAgo}s`}
+      {secondsAgo < 5
+        ? t("updatedJustNow")
+        : t("updatedSecondsAgo").replace("{seconds}", String(secondsAgo))}
     </span>
   );
 }
@@ -236,6 +230,7 @@ interface LiveGameViewProps {
 
 export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const { data: games } = useTodaysGames();
+  const { t } = useTranslation();
   const gameInfo = games?.find((g) => g.gameid === gameId);
 
   const homeRaw = gameInfo ? `${gameInfo.homeTeam} ${gameInfo.homeScore}` : "";
@@ -251,8 +246,7 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const teamData = teamQuery.data;
   const playerData = playerQuery.data;
 
-  const gameNotStarted =
-    teamData?.status === "error" || !teamData?.game_data;
+  const gameNotStarted = teamData?.status === "error" || !teamData?.game_data;
 
   const teamGameData = teamData?.game_data as
     | {
@@ -274,17 +268,14 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const homePlayers = playerGameData?.Home?.FullGame ?? [];
 
   const isRefetching = teamQuery.isFetching || playerQuery.isFetching;
-  const lastUpdated = Math.max(
-    teamQuery.dataUpdatedAt ?? 0,
-    playerQuery.dataUpdatedAt ?? 0,
-  );
+  const lastUpdated = Math.max(teamQuery.dataUpdatedAt ?? 0, playerQuery.dataUpdatedAt ?? 0);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <a href="/" className="text-sm text-gray-500 hover:text-gray-300">
-          ← Volver
+          ← {t("back")}
         </a>
         <div className="flex items-center gap-2">
           {isRefetching && (
@@ -316,7 +307,7 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
             ) : (
               <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-1 text-xs font-medium text-red-400">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-                EN VIVO
+                {t("liveTag")}
               </span>
             )}
             <p className="mt-1 text-xs text-gray-600">{gameId}</p>
@@ -338,23 +329,20 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
       </div>
 
       {gameNotStarted ? (
-        <p className="text-center text-sm text-gray-500">
-          El partido aún no ha comenzado. Los datos en vivo aparecerán aquí cuando empiece.
-        </p>
+        <p className="text-center text-sm text-gray-500">{t("gameNotStarted")}</p>
       ) : (
         <>
           {/* Team stats */}
-          {(Object.keys(awayTeamStats).length > 0 ||
-            Object.keys(homeTeamStats).length > 0) && (
+          {(Object.keys(awayTeamStats).length > 0 || Object.keys(homeTeamStats).length > 0) && (
             <div className="flex gap-4">
               <TeamStatsBox
-                label="Visitante"
+                label={t("away")}
                 abbr={away.abbr}
                 score={away.score}
                 stats={awayTeamStats}
               />
               <TeamStatsBox
-                label="Local"
+                label={t("home")}
                 abbr={home.abbr}
                 score={home.score}
                 stats={homeTeamStats}
@@ -364,18 +352,10 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
 
           {/* Player boxscore */}
           {awayPlayers.length > 0 && (
-            <PlayerTable
-              label={away.abbr}
-              abbr={away.abbr}
-              players={awayPlayers}
-            />
+            <PlayerTable label={away.abbr} abbr={away.abbr} players={awayPlayers} />
           )}
           {homePlayers.length > 0 && (
-            <PlayerTable
-              label={home.abbr}
-              abbr={home.abbr}
-              players={homePlayers}
-            />
+            <PlayerTable label={home.abbr} abbr={home.abbr} players={homePlayers} />
           )}
         </>
       )}

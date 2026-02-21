@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { Player } from "../types/player";
 import { formatPlayerStats } from "../utils/playerStats";
 import { useTranslation } from "../hooks/useTranslation";
@@ -12,14 +13,29 @@ interface PlayerCardProps {
 export default function PlayerCard({ player, onClose }: PlayerCardProps) {
   const stats = formatPlayerStats(player);
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    dialogRef.current?.focus();
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={player.Name}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-900"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="relative w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl outline-none dark:border-gray-700 dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
         <button

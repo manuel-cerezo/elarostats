@@ -15,7 +15,7 @@ export async function getStaticPaths() {
 
 const { player } = Astro.props;
 const headshotUrl = getHeadshotUrl(player.nba_id);
-const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
+const teamLogoUrl = getTeamLogoUrl(player.TeamId);
 ---
 
 <Layout title={`${player.Name} — elarostats`}>

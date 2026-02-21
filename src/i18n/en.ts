@@ -1,6 +1,9 @@
 export const en = {
   // Navigation
   back: "Back",
+  navHome: "Home",
+  navGames: "Games",
+  navTeams: "Teams",
 
   // Search
   search: "Search",
@@ -61,4 +64,13 @@ export const en = {
   paceTitle: "Pace (possessions per 48 min)",
   fg3PctTitle: "Three-point percentage",
   plusMinusTitle: "Point differential for the season",
+
+  // Live game
+  updatedSecondsAgo: "Updated {seconds}s ago",
+  updatedJustNow: "Updated just now",
+  liveTag: "LIVE",
+  gameNotStarted: "The game hasn't started yet. Live data will appear here when it begins.",
+  gameNotFound: "Game not found.",
+  backToHome: "Back to home",
+  dataSource: "Source: pbpstats.com · Data updated in real-time",
 } as const;
