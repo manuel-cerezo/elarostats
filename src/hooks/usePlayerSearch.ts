@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { searchPlayers } from "../api/local";
+import { useMemo, useState } from "react";
+import { useAllPlayers } from "./useAllPlayers";
 import type { Player } from "../types/player";
 import { MAX_SEARCH_RESULTS } from "../constants/player";
 
@@ -7,6 +7,8 @@ interface UsePlayerSearchReturn {
   query: string;
   results: Player[];
   isOpen: boolean;
+  isLoading: boolean;
+  isError: boolean;
   activeIndex: number;
   selectedPlayer: Player | null;
   handleQueryChange: (value: string) => void;
@@ -20,27 +22,35 @@ interface UsePlayerSearchReturn {
 
 export function usePlayerSearch(): UsePlayerSearchReturn {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Player[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
-  async function search(value: string) {
-    const found = await searchPlayers(value);
-    const sliced = found.slice(0, MAX_SEARCH_RESULTS);
-    setResults(sliced);
-    setIsOpen(sliced.length > 0);
-    setActiveIndex(-1);
-  }
+  const { data: allPlayers = [], isLoading, isError } = useAllPlayers();
+
+  // Filtrado client-side sobre los datos cacheados por TanStack Query
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase().trim();
+    return allPlayers
+      .filter(
+        (p) =>
+          p.Name?.toLowerCase().includes(q) ||
+          p.ShortName?.toLowerCase().includes(q) ||
+          p.TeamAbbreviation?.toLowerCase().includes(q),
+      )
+      .slice(0, MAX_SEARCH_RESULTS);
+  }, [query, allPlayers]);
 
   function handleQueryChange(value: string) {
     setQuery(value);
-    void search(value);
+    setIsOpen(value.trim().length > 0);
+    setActiveIndex(-1);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    void search(query);
+    setIsOpen(results.length > 0);
   }
 
   function handleSelectPlayer(player: Player) {
@@ -78,7 +88,9 @@ export function usePlayerSearch(): UsePlayerSearchReturn {
   return {
     query,
     results,
-    isOpen,
+    isOpen: isOpen && results.length > 0,
+    isLoading,
+    isError,
     activeIndex,
     selectedPlayer,
     handleQueryChange,

@@ -48,14 +48,11 @@ function rowToPlayer(row: Record<string, unknown>): Player {
 }
 
 // ---------------------------------------------------------------------------
-// Data source — Supabase (siempre requerido)
+// Core fetch — función pura consumida por TanStack Query (browser)
+// y por getStaticPaths (build-time)
 // ---------------------------------------------------------------------------
 
-let _cachedPlayers: Player[] | null = null;
-
-async function loadPlayers(): Promise<Player[]> {
-  if (_cachedPlayers) return _cachedPlayers;
-
+export async function fetchAllPlayers(): Promise<Player[]> {
   if (!supabase) {
     throw new Error(
       "[elarostats] Supabase no está configurado. " +
@@ -72,36 +69,13 @@ async function loadPlayers(): Promise<Player[]> {
     throw new Error(`[elarostats] Error consultando Supabase: ${error.message}`);
   }
 
-  _cachedPlayers = (data ?? []).map((row) =>
-    rowToPlayer(row as Record<string, unknown>),
-  );
-  return _cachedPlayers;
+  return (data ?? []).map((row) => rowToPlayer(row as Record<string, unknown>));
 }
 
 // ---------------------------------------------------------------------------
-// Public API — identical signatures to the previous version so no callers
-// need to change.  The only difference is that these are now async.
+// getAllPlayers — alias para getStaticPaths en build-time (Astro SSG)
 // ---------------------------------------------------------------------------
-
-export async function searchPlayers(query: string): Promise<Player[]> {
-  if (!query.trim()) return [];
-
-  const players = await loadPlayers();
-  const q = query.toLowerCase().trim();
-
-  return players.filter(
-    (p) =>
-      p.Name?.toLowerCase().includes(q) ||
-      p.ShortName?.toLowerCase().includes(q) ||
-      p.TeamAbbreviation?.toLowerCase().includes(q),
-  );
-}
-
-export async function getPlayerById(id: number): Promise<Player | undefined> {
-  const players = await loadPlayers();
-  return players.find((p) => p.nba_id === id);
-}
 
 export async function getAllPlayers(): Promise<Player[]> {
-  return loadPlayers();
+  return fetchAllPlayers();
 }
