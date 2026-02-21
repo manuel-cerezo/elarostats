@@ -66,7 +66,11 @@ function parseTeamField(field: string): { abbr: string; score: number } {
   return { abbr: parts[0] ?? "", score: parseInt(parts[1] ?? "0", 10) };
 }
 
-function getStatValue(rows: TeamStatRow[], stat: string, side: "home" | "visitor"): string | number | undefined {
+function getStatValue(
+  rows: TeamStatRow[],
+  stat: string,
+  side: "home" | "visitor",
+): string | number | undefined {
   const row = rows.find((r) => r.stat === stat);
   return row ? row[side] : undefined;
 }
@@ -96,31 +100,17 @@ function formatStatValue(value: string | number | undefined): string {
 
 // --- Components ---
 
-function StatRow({
-  label,
-  home,
-  away,
-}: {
-  label: string;
-  home: string;
-  away: string;
-}) {
+function StatRow({ label, home, away }: { label: string; home: string; away: string }) {
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 py-1">
-      <span className="text-right text-sm tabular-nums text-gray-300">{home}</span>
+      <span className="text-right text-sm tabular-nums text-gray-300">{away}</span>
       <span className="min-w-[120px] text-center text-xs text-gray-500">{label}</span>
-      <span className="text-left text-sm tabular-nums text-gray-300">{away}</span>
+      <span className="text-left text-sm tabular-nums text-gray-300">{home}</span>
     </div>
   );
 }
 
-function GameCard({
-  game,
-  t,
-}: {
-  game: ParsedGame;
-  t: ReturnType<typeof useTranslation>["t"];
-}) {
+function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTranslation>["t"] }) {
   const hasStarted = game.homeScore > 0 || game.awayScore > 0;
   const homeWins = hasStarted && game.homeScore > game.awayScore;
   const awayWins = hasStarted && game.awayScore > game.homeScore;
@@ -137,9 +127,7 @@ function GameCard({
   return (
     <div
       className={`overflow-hidden rounded-2xl border shadow-sm ${
-        game.isLive
-          ? "border-red-500/20 bg-gray-900"
-          : "border-gray-700/50 bg-gray-900"
+        game.isLive ? "border-red-500/20 bg-gray-900" : "border-gray-700/50 bg-gray-900"
       }`}
     >
       {/* Header with status */}
@@ -157,12 +145,10 @@ function GameCard({
             </span>
           )}
           {!game.isLive && !game.isFinal && (
-            <span className="text-sm font-semibold text-orange-400">
-              {game.time}
-            </span>
+            <span className="text-sm font-semibold text-orange-400">{game.time}</span>
           )}
         </div>
-        {gameInfo && (gameInfo.home_win_probability != null) && (
+        {gameInfo && gameInfo.home_win_probability != null && (
           <span className="text-xs text-gray-600">
             WP: {gameInfo.home_win_probability}% – {gameInfo.visitor_win_probability}%
           </span>
@@ -173,7 +159,9 @@ function GameCard({
       <div className="px-4 py-4">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4">
           {/* Away team */}
-          <div className={`flex items-center justify-end gap-3 ${hasStarted && !awayWins ? "opacity-50" : ""}`}>
+          <div
+            className={`flex items-center justify-end gap-3 ${hasStarted && !awayWins ? "opacity-50" : ""}`}
+          >
             <div className="text-right">
               <div className={`font-semibold ${awayWins ? "text-white" : "text-gray-300"}`}>
                 {awayTeam?.teamName ?? game.awayAbbr}
@@ -206,7 +194,9 @@ function GameCard({
           )}
 
           {/* Home team */}
-          <div className={`flex items-center justify-start gap-3 ${hasStarted && !homeWins ? "opacity-50" : ""}`}>
+          <div
+            className={`flex items-center justify-start gap-3 ${hasStarted && !homeWins ? "opacity-50" : ""}`}
+          >
             {homeId && (
               <img
                 src={`/teams/${homeId}.svg`}
@@ -275,7 +265,8 @@ export default function GamesView() {
           const home = parseTeamField(g.home);
           const away = parseTeamField(g.away);
           const hasStarted = home.score > 0 || away.score > 0;
-          const isFinal = g.time.toLowerCase() === "final" || g.time.toLowerCase().startsWith("final");
+          const isFinal =
+            g.time.toLowerCase() === "final" || g.time.toLowerCase().startsWith("final");
           const isLive = hasStarted && !isFinal;
           return {
             gameId: g.gameid,
@@ -330,10 +321,7 @@ export default function GamesView() {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-40 animate-pulse rounded-2xl bg-gray-800/40"
-          />
+          <div key={i} className="h-40 animate-pulse rounded-2xl bg-gray-800/40" />
         ))}
       </div>
     );
@@ -355,10 +343,12 @@ export default function GamesView() {
     );
   }
 
-  const today = new Date().toLocaleDateString(
-    locale === "en" ? "en-US" : "es-ES",
-    { weekday: "long", year: "numeric", month: "long", day: "numeric" },
-  );
+  const today = new Date().toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   const liveGames = games.filter((g) => g.isLive);
   const pregameGames = games.filter((g) => !g.isLive && !g.isFinal);
