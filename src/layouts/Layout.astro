@@ -9,7 +9,6 @@ interface Props {
 }
 
 const { title } = Astro.props;
-const currentPath = Astro.url.pathname;
 ---
 
 <!doctype html>
@@ -40,28 +39,46 @@ const currentPath = Astro.url.pathname;
         <a href="/" class="text-lg font-extrabold tracking-tight">
           elaro<span class="text-orange-500">stats</span>
         </a>
-        <nav class="flex items-center gap-1">
+        <nav id="main-nav" class="flex items-center gap-1">
           <a
             href="/"
-            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath === '/' ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white'}`}
+            data-nav-exact="true"
+            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium transition-colors text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Inicio
           </a>
           <a
             href="/games"
-            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath.startsWith('/games') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white'}`}
+            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium transition-colors text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Partidos
           </a>
           <a
             href="/teams"
-            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath.startsWith('/teams') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white'}`}
+            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium transition-colors text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Equipos
           </a>
         </nav>
       </div>
     </header>
+    <script is:inline>
+      function updateActiveNav() {
+        var path = window.location.pathname;
+        var links = document.querySelectorAll('#main-nav .nav-link');
+        var activeClasses = ['bg-gray-100', 'text-gray-900', 'dark:bg-gray-800', 'dark:text-white'];
+        var inactiveClasses = ['text-gray-500', 'hover:bg-gray-100', 'hover:text-gray-900', 'dark:text-gray-400', 'dark:hover:bg-gray-800/60', 'dark:hover:text-white'];
+        links.forEach(function(link) {
+          var href = link.getAttribute('href');
+          var isExact = link.getAttribute('data-nav-exact') === 'true';
+          var isActive = isExact ? path === href : (href !== '/' && path.startsWith(href));
+          activeClasses.forEach(function(c) { link.classList.toggle(c, isActive); });
+          inactiveClasses.forEach(function(c) { link.classList.toggle(c, !isActive); });
+        });
+      }
+      updateActiveNav();
+      document.addEventListener('astro:page-load', updateActiveNav);
+    </script>
 
     <!-- Live scores strip: transition:persist keeps it mounted during navigation -->
     <div transition:persist="live-scores">
