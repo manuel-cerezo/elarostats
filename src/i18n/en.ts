@@ -30,4 +30,34 @@ export const en = {
   toggleTheme: "Toggle theme",
   lightMode: "Light",
   darkMode: "Dark",
+
+  // Games page
+  gamesPageTitle: "Games",
+  live: "Live",
+  upcoming: "Upcoming",
+  finished: "Final",
+  teamLabel: "Team",
+  away: "Away",
+  home: "Home",
+  leaders: "Leaders",
+  errorLoadingGames: "Could not load games.",
+  noGamesToday: "No games scheduled today.",
+
+  // Teams page
+  teamsPageTitle: "NBA Teams",
+  teamsSeason: "2024-25 Season · Regular Season",
+  errorLoadingTeams: "Could not load team data.",
+  assists: "Assists",
+  rebounds: "Rebounds",
+  steals: "Steals",
+  blocks: "Blocks",
+  turnovers: "Turnovers",
+
+  // Team stats tooltips
+  netRtgTitle: "Net Rating (Off - Def per 100 possessions)",
+  offRtgTitle: "Offensive Rating (points per 100 possessions)",
+  defRtgTitle: "Defensive Rating (points allowed per 100 possessions)",
+  paceTitle: "Pace (possessions per 48 min)",
+  fg3PctTitle: "Three-point percentage",
+  plusMinusTitle: "Point differential for the season",
 } as const;

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import teamsData from "../data/teams.json";
+import { useTranslation } from "../hooks/useTranslation";
 
 interface GameTeam {
   teamId: number;
@@ -95,9 +96,11 @@ function PeriodScores({ team, periods }: { team: GameTeam; periods: number }) {
 function GameCard({
   game,
   timezone,
+  t,
 }: {
   game: Game;
   timezone: string;
+  t: ReturnType<typeof useTranslation>["t"];
 }) {
   const isLive = game.gameStatus === 2;
   const isFinal = game.gameStatus === 3;
@@ -162,7 +165,7 @@ function GameCard({
           <thead>
             <tr className="border-b border-gray-800/40">
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
-                Equipo
+                {t("teamLabel")}
               </th>
               {!isPregame &&
                 Array.from({ length: maxPeriod }, (_, i) => i + 1).map((p) => (
@@ -197,7 +200,7 @@ function GameCard({
                     <div className={`font-semibold ${awayWins ? "text-white" : "text-gray-300"}`}>
                       {awayTeamData?.teamName ?? `${game.awayTeam.teamCity} ${game.awayTeam.teamName}`}
                     </div>
-                    <div className="text-xs text-gray-500">Visitante</div>
+                    <div className="text-xs text-gray-500">{t("away")}</div>
                   </div>
                 </div>
               </td>
@@ -229,7 +232,7 @@ function GameCard({
                     <div className={`font-semibold ${homeWins ? "text-white" : "text-gray-300"}`}>
                       {homeTeamData?.teamName ?? `${game.homeTeam.teamCity} ${game.homeTeam.teamName}`}
                     </div>
-                    <div className="text-xs text-gray-500">Local</div>
+                    <div className="text-xs text-gray-500">{t("home")}</div>
                   </div>
                 </div>
               </td>
@@ -252,7 +255,7 @@ function GameCard({
       {!isPregame && game.gameLeaders && (
         <div className="border-t border-gray-800/40 px-4 py-2.5">
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-600">
-            Líderes
+            {t("leaders")}
           </p>
           <div className="flex items-start justify-between gap-4">
             <div className="text-xs text-gray-400">
@@ -279,6 +282,7 @@ function GameCard({
 }
 
 export default function GamesView() {
+  const { t, locale } = useTranslation();
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -335,7 +339,7 @@ export default function GamesView() {
   if (error) {
     return (
       <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
-        No se pudieron cargar los partidos.
+        {t("errorLoadingGames")}
       </div>
     );
   }
@@ -343,18 +347,21 @@ export default function GamesView() {
   if (games.length === 0) {
     return (
       <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
-        No hay partidos programados hoy.
+        {t("noGamesToday")}
       </div>
     );
   }
 
   const formattedDate = gameDate
-    ? new Date(gameDate + "T12:00:00").toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? new Date(gameDate + "T12:00:00").toLocaleDateString(
+        locale === "en" ? "en-US" : "es-ES",
+        {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        },
+      )
     : "";
 
   // Group by status: live > final > pregame
@@ -367,7 +374,7 @@ export default function GamesView() {
     <div>
       <div className="mb-6 flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Partidos</h1>
+          <h1 className="text-2xl font-bold text-white">{t("gamesPageTitle")}</h1>
           {formattedDate && (
             <p className="mt-0.5 text-sm capitalize text-gray-500">{formattedDate}</p>
           )}
@@ -382,11 +389,11 @@ export default function GamesView() {
         <div className="mb-2">
           <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-red-400">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-            En directo
+            {t("live")}
           </p>
           <div className="space-y-4">
             {liveGames.map((game) => (
-              <GameCard key={game.gameId} game={game} timezone={timezone} />
+              <GameCard key={game.gameId} game={game} timezone={timezone} t={t} />
             ))}
           </div>
         </div>
@@ -395,11 +402,11 @@ export default function GamesView() {
       {pregameGames.length > 0 && (
         <div className="mb-6 mt-6">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Próximos
+            {t("upcoming")}
           </p>
           <div className="space-y-4">
             {pregameGames.map((game) => (
-              <GameCard key={game.gameId} game={game} timezone={timezone} />
+              <GameCard key={game.gameId} game={game} timezone={timezone} t={t} />
             ))}
           </div>
         </div>
@@ -408,11 +415,11 @@ export default function GamesView() {
       {finalGames.length > 0 && (
         <div className="mt-6">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Finalizados
+            {t("finished")}
           </p>
           <div className="space-y-4">
             {finalGames.map((game) => (
-              <GameCard key={game.gameId} game={game} timezone={timezone} />
+              <GameCard key={game.gameId} game={game} timezone={timezone} t={t} />
             ))}
           </div>
         </div>

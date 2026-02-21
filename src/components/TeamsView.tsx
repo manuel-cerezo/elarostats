@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import teamsData from "../data/teams.json";
+import { useTranslation } from "../hooks/useTranslation";
 
 interface PbpTeam {
   EntityId: number;
@@ -72,11 +73,13 @@ function TeamRow({
   rank,
   onClick,
   expanded,
+  t,
 }: {
   team: PbpTeam;
   rank: number;
   onClick: () => void;
   expanded: boolean;
+  t: ReturnType<typeof useTranslation>["t"];
 }) {
   const localTeam = localTeamById.get(team.TeamId);
   const teamName = localTeam?.teamName ?? team.Name;
@@ -159,11 +162,11 @@ function TeamRow({
         <tr className="border-b border-gray-800/40 bg-gray-900/50">
           <td colSpan={9} className="px-4 py-4">
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              <StatBadge label="Asistencias" value={String(team.Assists)} />
-              <StatBadge label="Rebotes" value={String(team.Rebounds)} />
-              <StatBadge label="Robos" value={String(team.Steals)} />
-              <StatBadge label="Tapones" value={String(team.Blocks)} />
-              <StatBadge label="Pérdidas" value={String(team.Turnovers)} />
+              <StatBadge label={t("assists")} value={String(team.Assists)} />
+              <StatBadge label={t("rebounds")} value={String(team.Rebounds)} />
+              <StatBadge label={t("steals")} value={String(team.Steals)} />
+              <StatBadge label={t("blocks")} value={String(team.Blocks)} />
+              <StatBadge label={t("turnovers")} value={String(team.Turnovers)} />
               <StatBadge label="At Rim %" value={atRimPct} />
             </div>
           </td>
@@ -184,6 +187,7 @@ function getNetRtg(team: PbpTeam): number {
 }
 
 export default function TeamsView() {
+  const { t } = useTranslation();
   const [teams, setTeams] = useState<PbpTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -298,7 +302,7 @@ export default function TeamsView() {
   if (error) {
     return (
       <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
-        No se pudieron cargar los datos de equipos.
+        {t("errorLoadingTeams")}
       </div>
     );
   }
@@ -306,9 +310,9 @@ export default function TeamsView() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Equipos NBA</h1>
+        <h1 className="text-2xl font-bold text-white">{t("teamsPageTitle")}</h1>
         <p className="mt-0.5 text-sm text-gray-500">
-          Temporada 2024-25 · Regular Season
+          {t("teamsSeason")}
         </p>
       </div>
 
@@ -321,14 +325,14 @@ export default function TeamsView() {
                   #
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Equipo
+                  {t("teamLabel")}
                 </th>
-                <SortHeader label="Net Rtg" sortK="netRtg" title="Net Rating (Off - Def por 100 posesiones)" />
-                <SortHeader label="Off Rtg" sortK="offRtg" title="Offensive Rating (puntos por 100 posesiones)" />
-                <SortHeader label="Def Rtg" sortK="defRtg" title="Defensive Rating (puntos permitidos por 100 posesiones)" />
-                <SortHeader label="Pace" sortK="pace" title="Ritmo de juego (posesiones por 48 min)" />
-                <SortHeader label="3P%" sortK="fg3Pct" title="Porcentaje de triples" />
-                <SortHeader label="+/-" sortK="plusMinus" title="Diferencial de puntos en la temporada" />
+                <SortHeader label="Net Rtg" sortK="netRtg" title={t("netRtgTitle")} />
+                <SortHeader label="Off Rtg" sortK="offRtg" title={t("offRtgTitle")} />
+                <SortHeader label="Def Rtg" sortK="defRtg" title={t("defRtgTitle")} />
+                <SortHeader label="Pace" sortK="pace" title={t("paceTitle")} />
+                <SortHeader label="3P%" sortK="fg3Pct" title={t("fg3PctTitle")} />
+                <SortHeader label="+/-" sortK="plusMinus" title={t("plusMinusTitle")} />
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -342,6 +346,7 @@ export default function TeamsView() {
                     setExpandedId(expandedId === team.TeamId ? null : team.TeamId)
                   }
                   expanded={expandedId === team.TeamId}
+                  t={t}
                 />
               ))}
             </tbody>
