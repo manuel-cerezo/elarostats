@@ -1,8 +1,11 @@
 ---
-import Analytics from '@vercel/analytics/astro';
-import SpeedInsights from '@vercel/speed-insights/astro';
-import { ViewTransitions } from 'astro:transitions';
-import LiveScoresIsland from '../components/LiveScoresIsland';
+import Analytics from "@vercel/analytics/astro";
+import SpeedInsights from "@vercel/speed-insights/astro";
+import { ViewTransitions } from "astro:transitions";
+import LiveScoresIsland from "../components/LiveScoresIsland";
+import ThemeToggleWithQuery from "../components/ThemeToggleWithQuery";
+import LanguageSelectorWithQuery from "../components/LanguageSelectorWithQuery";
+import PlayerPageSearchWithQuery from "../components/PlayerPageSearchWithQuery";
 
 interface Props {
   title: string;
@@ -26,7 +29,14 @@ const { title } = Astro.props;
       (function () {
         var stored = localStorage.getItem("elarostats-theme");
         var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var theme = stored === "light" ? "light" : stored === "dark" ? "dark" : prefersDark ? "dark" : "light";
+        var theme =
+          stored === "light"
+            ? "light"
+            : stored === "dark"
+              ? "dark"
+              : prefersDark
+                ? "dark"
+                : "light";
         if (theme === "dark") document.documentElement.classList.add("dark");
         else document.documentElement.classList.remove("dark");
       })();
@@ -34,7 +44,10 @@ const { title } = Astro.props;
   </head>
   <body class="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
     <!-- Nav header -->
-    <header transition:persist="nav" class="sticky top-0 z-40 border-b border-gray-200/60 bg-white/95 backdrop-blur-sm dark:border-gray-800/60 dark:bg-gray-950/95">
+    <header
+      transition:persist="nav"
+      class="sticky top-0 z-40 border-b border-gray-200/60 bg-white/95 backdrop-blur-sm dark:border-gray-800/60 dark:bg-gray-950/95"
+    >
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <a href="/" class="text-lg font-extrabold tracking-tight">
           elaro<span class="text-orange-500">stats</span>
@@ -43,41 +56,59 @@ const { title } = Astro.props;
           <a
             href="/"
             data-nav-exact="true"
-            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium transition-colors text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
+            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Inicio
           </a>
           <a
             href="/games"
-            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium transition-colors text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
+            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Partidos
           </a>
           <a
             href="/teams"
-            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium transition-colors text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
+            class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Equipos
           </a>
         </nav>
+        <div class="flex items-center gap-2">
+          <div class="hidden w-44 sm:block">
+            <PlayerPageSearchWithQuery client:only="react" />
+          </div>
+          <ThemeToggleWithQuery client:only="react" />
+          <LanguageSelectorWithQuery client:only="react" />
+        </div>
       </div>
     </header>
     <script is:inline>
       function updateActiveNav() {
         var path = window.location.pathname;
-        var links = document.querySelectorAll('#main-nav .nav-link');
-        var activeClasses = ['bg-gray-100', 'text-gray-900', 'dark:bg-gray-800', 'dark:text-white'];
-        var inactiveClasses = ['text-gray-500', 'hover:bg-gray-100', 'hover:text-gray-900', 'dark:text-gray-400', 'dark:hover:bg-gray-800/60', 'dark:hover:text-white'];
-        links.forEach(function(link) {
-          var href = link.getAttribute('href');
-          var isExact = link.getAttribute('data-nav-exact') === 'true';
-          var isActive = isExact ? path === href : (href !== '/' && path.startsWith(href));
-          activeClasses.forEach(function(c) { link.classList.toggle(c, isActive); });
-          inactiveClasses.forEach(function(c) { link.classList.toggle(c, !isActive); });
+        var links = document.querySelectorAll("#main-nav .nav-link");
+        var activeClasses = ["bg-gray-100", "text-gray-900", "dark:bg-gray-800", "dark:text-white"];
+        var inactiveClasses = [
+          "text-gray-500",
+          "hover:bg-gray-100",
+          "hover:text-gray-900",
+          "dark:text-gray-400",
+          "dark:hover:bg-gray-800/60",
+          "dark:hover:text-white",
+        ];
+        links.forEach(function (link) {
+          var href = link.getAttribute("href");
+          var isExact = link.getAttribute("data-nav-exact") === "true";
+          var isActive = isExact ? path === href : href !== "/" && path.startsWith(href);
+          activeClasses.forEach(function (c) {
+            link.classList.toggle(c, isActive);
+          });
+          inactiveClasses.forEach(function (c) {
+            link.classList.toggle(c, !isActive);
+          });
         });
       }
       updateActiveNav();
-      document.addEventListener('astro:page-load', updateActiveNav);
+      document.addEventListener("astro:page-load", updateActiveNav);
     </script>
 
     <!-- Live scores strip: transition:persist keeps it mounted during navigation -->
