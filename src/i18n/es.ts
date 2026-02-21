@@ -50,7 +50,7 @@ export const es = {
 
   // Página de equipos
   teamsPageTitle: "Equipos NBA",
-  teamsSeason: "Temporada 2024-25 · Regular Season",
+  teamsSeason: "Temporada 2025-26 · Regular Season",
   errorLoadingTeams: "No se pudieron cargar los datos de equipos.",
   assists: "Asistencias",
   rebounds: "Rebotes",

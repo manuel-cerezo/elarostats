@@ -50,7 +50,7 @@ export const en = {
 
   // Teams page
   teamsPageTitle: "NBA Teams",
-  teamsSeason: "2024-25 Season · Regular Season",
+  teamsSeason: "2025-26 Season · Regular Season",
   errorLoadingTeams: "Could not load team data.",
   assists: "Assists",
   rebounds: "Rebounds",

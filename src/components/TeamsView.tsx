@@ -199,10 +199,10 @@ export default function TeamsView() {
     async function fetchTeams() {
       try {
         const res = await fetch(
-          "https://api.pbpstats.com/get-totals/nba?Season=2024-25&SeasonType=Regular+Season&Type=Team",
+          "https://api.pbpstats.com/get-totals/nba?Season=2025-26&SeasonType=Regular+Season&Type=Team",
         );
-        if (!res.ok) throw new Error("Failed");
         const data: PbpResponse = await res.json();
+        if (!data.multi_row_table_data?.length) throw new Error("No data");
         setTeams(data.multi_row_table_data);
         setError(false);
       } catch {
