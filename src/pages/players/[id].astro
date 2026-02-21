@@ -3,7 +3,6 @@ import Layout from "../../layouts/Layout.astro";
 import { getAllPlayers } from "../../api/local";
 import { formatPlayerStats, getHeadshotUrl, getTeamLogoUrl } from "../../utils/playerStats";
 import { PLAYER_HEADSHOT_FALLBACK_URL } from "../../constants/player";
-import PlayerPageSearchWithQuery from "../../components/PlayerPageSearchWithQuery";
 
 export async function getStaticPaths() {
   const players = await getAllPlayers();
@@ -20,37 +19,7 @@ const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
 ---
 
 <Layout title={`${player.Name} — elarostats`}>
-  <header class="flex items-center justify-between border-b border-gray-800 px-6 py-4">
-    <a
-      href="/"
-      class="flex items-center gap-2 text-sm text-gray-400 transition hover:text-white"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M19 12H5M12 19l-7-7 7-7"></path>
-      </svg>
-      Back
-    </a>
-
-    <a href="/" class="text-lg font-extrabold tracking-tight">
-      elaro<span class="text-orange-500">stats</span>
-    </a>
-
-    <div class="w-64">
-      <PlayerPageSearchWithQuery client:only="react" />
-    </div>
-  </header>
-
-  <main class="mx-auto max-w-2xl px-4 py-12">
+  <main class="mx-auto max-w-2xl px-4 py-10">
     <div class="flex items-center gap-6">
       <img
         src={headshotUrl}

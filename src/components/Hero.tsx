@@ -1,4 +1,4 @@
-import { usePlayerSearch } from "../hooks/usePlayerSearch";
+import { useSearch } from "../hooks/useSearch";
 import { useClickOutside } from "../hooks/useClickOutside";
 import SearchInput from "./SearchInput";
 import SearchDropdown from "./SearchDropdown";
@@ -11,16 +11,16 @@ export default function Hero() {
     activeIndex,
     handleQueryChange,
     handleSubmit,
-    handleSelectPlayer,
+    handleSelect,
     handleCloseDropdown,
     handleKeyDown,
     setActiveIndex,
-  } = usePlayerSearch();
+  } = useSearch();
 
   const containerRef = useClickOutside<HTMLDivElement>(handleCloseDropdown);
 
   return (
-    <section className="flex flex-col items-center justify-center gap-6 px-4 py-24 text-center">
+    <section className="flex flex-col items-center justify-center gap-6 px-4 py-16 text-center">
       <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl">
         elaro<span className="text-orange-500">stats</span>
       </h1>
@@ -39,7 +39,7 @@ export default function Hero() {
           <SearchDropdown
             results={results}
             activeIndex={activeIndex}
-            onSelect={handleSelectPlayer}
+            onSelect={handleSelect}
             onHover={setActiveIndex}
           />
         )}
