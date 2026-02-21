@@ -10,6 +10,7 @@ export const en = {
 
   // Home
   heroSubtitle: "NBA stats, analytics, and insights — all in one place.",
+  todaysGames: "Today's Games",
   teams: "Teams",
 
   // Team page
