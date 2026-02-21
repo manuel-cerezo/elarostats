@@ -1,7 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { getAllPlayers } from "../../api/local";
-import { formatPlayerStats, getHeadshotUrl } from "../../utils/playerStats";
+import { formatPlayerStats, getHeadshotUrl, getTeamLogoUrl } from "../../utils/playerStats";
 import { PLAYER_HEADSHOT_FALLBACK_URL } from "../../constants/player";
 import PlayerPageSearchWithQuery from "../../components/PlayerPageSearchWithQuery";
 
@@ -16,6 +16,7 @@ export async function getStaticPaths() {
 const { player } = Astro.props;
 const stats = formatPlayerStats(player);
 const headshotUrl = getHeadshotUrl(player.nba_id);
+const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
 ---
 
 <Layout title={`${player.Name} — elarostats`}>
@@ -57,16 +58,27 @@ const headshotUrl = getHeadshotUrl(player.nba_id);
         class="h-28 w-28 rounded-full border-2 border-gray-700 object-cover"
         onerror={`this.src='${PLAYER_HEADSHOT_FALLBACK_URL}'`}
       />
-      <div>
-        <h1 class="text-4xl font-extrabold text-white">{player.Name}</h1>
-        <p class="mt-1 text-gray-400">
-          {player.TeamAbbreviation} · {player.Pos2}
-        </p>
+      <div class="flex flex-1 items-center justify-between gap-4">
+        <div>
+          <h1 class="text-4xl font-extrabold text-white">{player.Name}</h1>
+          <p class="mt-1 text-gray-400">
+            {player.TeamAbbreviation} · {player.Pos2}
+          </p>
+          {
+            player["Offensive Archetype"] && (
+              <span class="mt-2 inline-block rounded-full bg-orange-500/20 px-3 py-0.5 text-sm font-medium text-orange-400">
+                {player["Offensive Archetype"]}
+              </span>
+            )
+          }
+        </div>
         {
-          player["Offensive Archetype"] && (
-            <span class="mt-2 inline-block rounded-full bg-orange-500/20 px-3 py-0.5 text-sm font-medium text-orange-400">
-              {player["Offensive Archetype"]}
-            </span>
+          teamLogoUrl && (
+            <img
+              src={teamLogoUrl}
+              alt={player.TeamAbbreviation}
+              class="h-20 w-20 flex-shrink-0 object-contain opacity-90"
+            />
           )
         }
       </div>

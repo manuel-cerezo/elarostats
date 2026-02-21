@@ -1,5 +1,5 @@
 import type { Player } from "../types/player";
-import { getHeadshotUrl } from "../utils/playerStats";
+import { getHeadshotUrl, getTeamLogoUrl } from "../utils/playerStats";
 import { PLAYER_HEADSHOT_FALLBACK_URL } from "../constants/player";
 
 interface PlayerHeaderProps {
@@ -7,6 +7,8 @@ interface PlayerHeaderProps {
 }
 
 export default function PlayerHeader({ player }: PlayerHeaderProps) {
+  const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
+
   return (
     <div className="flex items-center gap-4">
       <img
@@ -18,15 +20,24 @@ export default function PlayerHeader({ player }: PlayerHeaderProps) {
             PLAYER_HEADSHOT_FALLBACK_URL;
         }}
       />
-      <div>
-        <h2 className="text-2xl font-extrabold text-white">{player.Name}</h2>
-        <p className="text-sm text-gray-400">
-          {player.TeamAbbreviation} · {player.Pos2}
-        </p>
-        {player["Offensive Archetype"] && (
-          <span className="mt-1 inline-block rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-400">
-            {player["Offensive Archetype"]}
-          </span>
+      <div className="flex flex-1 items-center justify-between gap-2">
+        <div>
+          <h2 className="text-2xl font-extrabold text-white">{player.Name}</h2>
+          <p className="text-sm text-gray-400">
+            {player.TeamAbbreviation} · {player.Pos2}
+          </p>
+          {player["Offensive Archetype"] && (
+            <span className="mt-1 inline-block rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-400">
+              {player["Offensive Archetype"]}
+            </span>
+          )}
+        </div>
+        {teamLogoUrl && (
+          <img
+            src={teamLogoUrl}
+            alt={player.TeamAbbreviation}
+            className="h-14 w-14 flex-shrink-0 object-contain opacity-90"
+          />
         )}
       </div>
     </div>
