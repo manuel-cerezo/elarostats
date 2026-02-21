@@ -25,4 +25,9 @@ export const es = {
 
   // Accesibilidad
   closeModal: "Cerrar",
+
+  // Tema
+  toggleTheme: "Cambiar tema",
+  lightMode: "Claro",
+  darkMode: "Oscuro",
 } as const;

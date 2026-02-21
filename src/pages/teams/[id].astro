@@ -5,6 +5,7 @@ import { getTeamLogoUrl } from "../../utils/playerStats";
 import PlayerPageSearchWithQuery from "../../components/PlayerPageSearchWithQuery";
 import TeamRosterWithQuery from "../../components/TeamRosterWithQuery";
 import LanguageSelectorWithQuery from "../../components/LanguageSelectorWithQuery";
+import ThemeToggleWithQuery from "../../components/ThemeToggleWithQuery";
 import TranslatedTextWithQuery from "../../components/TranslatedTextWithQuery";
 
 export async function getStaticPaths() {
@@ -20,10 +21,10 @@ const teamLogoUrl = getTeamLogoUrl(team.teamId);
 ---
 
 <Layout title={`${team.teamName} — elarostats`}>
-  <header class="flex items-center justify-between border-b border-gray-800 px-6 py-4">
+  <header class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-800">
     <a
       href="/"
-      class="flex items-center gap-2 text-sm text-gray-400 transition hover:text-white"
+      class="flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -45,7 +46,8 @@ const teamLogoUrl = getTeamLogoUrl(team.teamId);
       elaro<span class="text-orange-500">stats</span>
     </a>
 
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
+      <ThemeToggleWithQuery client:only="react" />
       <LanguageSelectorWithQuery client:only="react" />
       <div class="w-48">
         <PlayerPageSearchWithQuery client:only="react" />
@@ -65,15 +67,15 @@ const teamLogoUrl = getTeamLogoUrl(team.teamId);
         )
       }
       <div>
-        <p class="text-sm font-medium uppercase tracking-widest text-gray-500">
+        <p class="text-sm font-medium uppercase tracking-widest text-gray-400 dark:text-gray-500">
           {team.location}
         </p>
-        <h1 class="text-4xl font-extrabold text-white">{team.simpleName}</h1>
-        <p class="mt-1 text-gray-400">{team.abbreviation}</p>
+        <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white">{team.simpleName}</h1>
+        <p class="mt-1 text-gray-500 dark:text-gray-400">{team.abbreviation}</p>
       </div>
     </div>
 
-    <p class="mb-1 mt-10 text-xs font-semibold uppercase tracking-widest text-gray-500">
+    <p class="mb-1 mt-10 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
       <TranslatedTextWithQuery client:only="react" k="roster" />
     </p>
 

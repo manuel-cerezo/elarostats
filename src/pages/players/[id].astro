@@ -6,6 +6,7 @@ import { PLAYER_HEADSHOT_FALLBACK_URL } from "../../constants/player";
 import PlayerPageSearchWithQuery from "../../components/PlayerPageSearchWithQuery";
 import PlayerStatsPageWithQuery from "../../components/PlayerStatsPageWithQuery";
 import LanguageSelectorWithQuery from "../../components/LanguageSelectorWithQuery";
+import ThemeToggleWithQuery from "../../components/ThemeToggleWithQuery";
 import TranslatedTextWithQuery from "../../components/TranslatedTextWithQuery";
 
 export async function getStaticPaths() {
@@ -22,10 +23,10 @@ const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
 ---
 
 <Layout title={`${player.Name} — elarostats`}>
-  <header class="flex items-center justify-between border-b border-gray-800 px-6 py-4">
+  <header class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-800">
     <a
       href="/"
-      class="flex items-center gap-2 text-sm text-gray-400 transition hover:text-white"
+      class="flex items-center gap-2 text-sm text-gray-500 transition hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -47,7 +48,8 @@ const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
       elaro<span class="text-orange-500">stats</span>
     </a>
 
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-2">
+      <ThemeToggleWithQuery client:only="react" />
       <LanguageSelectorWithQuery client:only="react" />
       <div class="w-48">
         <PlayerPageSearchWithQuery client:only="react" />
@@ -60,18 +62,18 @@ const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
       <img
         src={headshotUrl}
         alt={player.Name}
-        class="h-28 w-28 rounded-full border-2 border-gray-700 object-cover"
+        class="h-28 w-28 rounded-full border-2 border-gray-200 object-cover dark:border-gray-700"
         onerror={`this.src='${PLAYER_HEADSHOT_FALLBACK_URL}'`}
       />
       <div class="flex flex-1 items-center justify-between gap-4">
         <div>
-          <h1 class="text-4xl font-extrabold text-white">{player.Name}</h1>
-          <p class="mt-1 text-gray-400">
+          <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white">{player.Name}</h1>
+          <p class="mt-1 text-gray-500 dark:text-gray-400">
             {player.TeamAbbreviation} · {player.Pos2}
           </p>
           {
             player["Offensive Archetype"] && (
-              <span class="mt-2 inline-block rounded-full bg-orange-500/20 px-3 py-0.5 text-sm font-medium text-orange-400">
+              <span class="mt-2 inline-block rounded-full bg-orange-500/20 px-3 py-0.5 text-sm font-medium text-orange-500 dark:text-orange-400">
                 {player["Offensive Archetype"]}
               </span>
             )

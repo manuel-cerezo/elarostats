@@ -19,12 +19,12 @@ export default function PlayerCard({ player, onClose }: PlayerCardProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg rounded-2xl border border-gray-700 bg-gray-900 p-6 shadow-2xl"
+        className="relative w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-gray-700 dark:bg-gray-900"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-gray-500 transition hover:text-white"
+          className="absolute right-4 top-4 text-gray-400 transition hover:text-gray-900 dark:text-gray-500 dark:hover:text-white"
           aria-label={t("closeModal")}
         >
           ✕
@@ -38,7 +38,7 @@ export default function PlayerCard({ player, onClose }: PlayerCardProps) {
           <StatCell label="TS%" value={stats.tsPct} />
         </div>
 
-        <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-gray-500">
+        <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
           {t("impact")}
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -48,7 +48,7 @@ export default function PlayerCard({ player, onClose }: PlayerCardProps) {
           <StatCell label="3yr RAPM" value={stats.rapm} />
         </div>
 
-        <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-gray-500">
+        <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
           {t("scoring")}
         </p>
         <div className="grid grid-cols-3 gap-2">

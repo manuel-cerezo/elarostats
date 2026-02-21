@@ -24,7 +24,7 @@ export default function PlayerStatsPage({ player }: PlayerStatsPageProps) {
         <StatCell label="TS%" value={stats.tsPct} />
       </div>
 
-      <p className="mb-3 mt-8 text-xs font-semibold uppercase tracking-widest text-gray-500">
+      <p className="mb-3 mt-8 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
         {t("impact")}
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -34,7 +34,7 @@ export default function PlayerStatsPage({ player }: PlayerStatsPageProps) {
         <StatCell label="3yr RAPM" value={stats.rapm} />
       </div>
 
-      <p className="mb-3 mt-8 text-xs font-semibold uppercase tracking-widest text-gray-500">
+      <p className="mb-3 mt-8 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
         {t("scoring")}
       </p>
       <div className="grid grid-cols-3 gap-3">
