@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useAllPlayers } from "../hooks/useAllPlayers";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { useTranslation } from "../hooks/useTranslation";
 import type { Player } from "../types/player";
 import { MAX_SEARCH_RESULTS } from "../constants/player";
 
@@ -10,6 +11,7 @@ export default function PlayerPageSearch() {
   const [activeIndex, setActiveIndex] = useState(-1);
 
   const { data: allPlayers = [], isLoading } = useAllPlayers();
+  const { t } = useTranslation();
 
   const containerRef = useClickOutside<HTMLDivElement>(() => setIsOpen(false));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,34 +69,36 @@ export default function PlayerPageSearch() {
         value={query}
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={isLoading ? "Loading players…" : "Search a player..."}
+        placeholder={isLoading ? t("loadingPlayers") : t("searchPlaceholder")}
         disabled={isLoading}
-        className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:border-orange-500 disabled:opacity-50"
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-orange-500 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder-gray-500"
         autoComplete="off"
-        aria-label="Search players"
+        aria-label={t("search")}
       />
       {isOpen && results.length > 0 && (
         <ul
           role="listbox"
-          className="absolute right-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-lg border border-gray-700 bg-gray-900 shadow-lg"
+          className="absolute right-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
         >
           {results.map((player, index) => (
             <li key={player.nba_id} role="option" aria-selected={index === activeIndex}>
               <button
                 type="button"
                 className={`flex w-full cursor-pointer items-center justify-between px-4 py-3 text-sm transition ${
-                  index === activeIndex ? "bg-gray-700" : "hover:bg-gray-800"
+                  index === activeIndex
+                    ? "bg-gray-100 dark:bg-gray-700"
+                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
                 }`}
                 onClick={() => navigateToPlayer(player)}
                 onMouseEnter={() => setActiveIndex(index)}
               >
                 <div className="flex flex-col text-left">
-                  <span className="font-medium text-white">{player.Name}</span>
-                  <span className="text-xs text-gray-400">
+                  <span className="font-medium text-gray-900 dark:text-white">{player.Name}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {player.TeamAbbreviation} · {player.Pos2}
                   </span>
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
                   {player.MPG?.toFixed(1)} MPG
                 </span>
               </button>

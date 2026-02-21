@@ -79,3 +79,12 @@ export async function fetchAllPlayers(): Promise<Player[]> {
 export async function getAllPlayers(): Promise<Player[]> {
   return fetchAllPlayers();
 }
+
+// ---------------------------------------------------------------------------
+// fetchPlayersByTeam — jugadores de un equipo concreto
+// ---------------------------------------------------------------------------
+
+export async function fetchPlayersByTeam(teamId: number): Promise<Player[]> {
+  const all = await fetchAllPlayers();
+  return all.filter((p) => p.TeamId === teamId);
+}
