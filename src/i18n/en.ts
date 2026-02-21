@@ -25,4 +25,9 @@ export const en = {
 
   // Accessibility
   closeModal: "Close",
+
+  // Theme
+  toggleTheme: "Toggle theme",
+  lightMode: "Light",
+  darkMode: "Dark",
 } as const;

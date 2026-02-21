@@ -18,7 +18,7 @@ export default function TeamsGrid() {
 
   return (
     <div className="w-full max-w-3xl">
-      <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-500">
+      <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
         {t("teams")}
       </p>
       <div className="grid grid-cols-5 gap-3 sm:grid-cols-6 md:grid-cols-10">
@@ -29,7 +29,7 @@ export default function TeamsGrid() {
               key={team.teamId}
               href={`/teams/${team.teamId}`}
               title={team.teamName}
-              className="flex flex-col items-center gap-1 rounded-lg p-2 transition hover:bg-gray-800"
+              className="flex flex-col items-center gap-1 rounded-lg p-2 transition hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               {logoUrl ? (
                 <img
