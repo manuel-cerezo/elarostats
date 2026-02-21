@@ -19,12 +19,14 @@ export default function SearchDropdown({
     <ul
       role="listbox"
       aria-label="Search results"
-      className="absolute top-full z-10 mt-1 w-full overflow-hidden rounded-lg border border-gray-700 bg-gray-900 shadow-lg"
+      className="absolute top-full z-10 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
     >
       {results.map((result, index) => {
         const isActive = index === activeIndex;
         const baseClass = `flex w-full cursor-pointer items-center justify-between px-4 py-3 text-sm transition ${
-          isActive ? "bg-gray-700" : "hover:bg-gray-800"
+          isActive
+            ? "bg-gray-100 dark:bg-gray-700"
+            : "hover:bg-gray-50 dark:hover:bg-gray-800"
         }`;
 
         if (result.type === "player") {
@@ -42,17 +44,17 @@ export default function SearchDropdown({
                 onMouseEnter={() => onHover(index)}
               >
                 <div className="flex items-center gap-2.5 text-left">
-                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-700 text-xs text-gray-400">
+                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs text-gray-500 dark:bg-gray-700 dark:text-gray-400">
                     {player.Name?.charAt(0) ?? "?"}
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-medium text-white">{player.Name}</span>
-                    <span className="text-xs text-gray-400">
+                    <span className="font-medium text-gray-900 dark:text-white">{player.Name}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       {player.TeamAbbreviation} · {player.Pos2}
                     </span>
                   </div>
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
                   {player.MPG?.toFixed(1)} MPG
                 </span>
               </button>
@@ -83,11 +85,11 @@ export default function SearchDropdown({
                   }}
                 />
                 <div className="flex flex-col">
-                  <span className="font-medium text-white">{result.teamName}</span>
-                  <span className="text-xs text-gray-400">{result.location}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{result.teamName}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{result.location}</span>
                 </div>
               </div>
-              <span className="rounded-full bg-gray-700/60 px-2 py-0.5 text-xs text-gray-400">
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-gray-700/60 dark:text-gray-400">
                 {result.abbreviation}
               </span>
             </button>

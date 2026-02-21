@@ -1,8 +1,9 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import { getAllPlayers } from "../../api/local";
-import { formatPlayerStats, getHeadshotUrl, getTeamLogoUrl } from "../../utils/playerStats";
+import { getHeadshotUrl, getTeamLogoUrl } from "../../utils/playerStats";
 import { PLAYER_HEADSHOT_FALLBACK_URL } from "../../constants/player";
+import PlayerStatsPageWithQuery from "../../components/PlayerStatsPageWithQuery";
 
 export async function getStaticPaths() {
   const players = await getAllPlayers();
@@ -13,7 +14,6 @@ export async function getStaticPaths() {
 }
 
 const { player } = Astro.props;
-const stats = formatPlayerStats(player);
 const headshotUrl = getHeadshotUrl(player.nba_id);
 const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
 ---
@@ -24,88 +24,37 @@ const teamLogoUrl = getTeamLogoUrl(player.TeamId as number | undefined);
       <img
         src={headshotUrl}
         alt={player.Name}
-        class="h-28 w-28 rounded-full border-2 border-gray-700 object-cover"
+        class="h-28 w-28 rounded-full border-2 border-gray-200 object-cover dark:border-gray-700"
         onerror={`this.src='${PLAYER_HEADSHOT_FALLBACK_URL}'`}
       />
       <div class="flex flex-1 items-center justify-between gap-4">
         <div>
-          <h1 class="text-4xl font-extrabold text-white">{player.Name}</h1>
-          <p class="mt-1 text-gray-400">
+          <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white">{player.Name}</h1>
+          <p class="mt-1 text-gray-500 dark:text-gray-400">
             {player.TeamAbbreviation} · {player.Pos2}
           </p>
           {
             player["Offensive Archetype"] && (
-              <span class="mt-2 inline-block rounded-full bg-orange-500/20 px-3 py-0.5 text-sm font-medium text-orange-400">
+              <span class="mt-2 inline-block rounded-full bg-orange-500/20 px-3 py-0.5 text-sm font-medium text-orange-500 dark:text-orange-400">
                 {player["Offensive Archetype"]}
               </span>
             )
           }
         </div>
         {
-          teamLogoUrl && (
-            <img
-              src={teamLogoUrl}
-              alt={player.TeamAbbreviation}
-              class="h-20 w-20 flex-shrink-0 object-contain opacity-90"
-            />
+          teamLogoUrl && player.TeamId && (
+            <a href={`/teams/${player.TeamId}`} title={player.TeamAbbreviation}>
+              <img
+                src={teamLogoUrl}
+                alt={player.TeamAbbreviation}
+                class="h-20 w-20 flex-shrink-0 object-contain opacity-90 transition hover:opacity-100"
+              />
+            </a>
           )
         }
       </div>
     </div>
 
-    <div class="mt-10 grid grid-cols-3 gap-3">
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">Games</span>
-        <span class="text-lg font-bold text-white">{player.GamesPlayed ?? "—"}</span>
-      </div>
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">MPG</span>
-        <span class="text-lg font-bold text-white">{player.MPG?.toFixed(1) ?? "—"}</span>
-      </div>
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">TS%</span>
-        <span class="text-lg font-bold text-white">{stats.tsPct}</span>
-      </div>
-    </div>
-
-    <p class="mb-3 mt-8 text-xs font-semibold uppercase tracking-widest text-gray-500">
-      Impact
-    </p>
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">DPM</span>
-        <span class="text-lg font-bold text-white">{stats.dpm}</span>
-      </div>
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">O-DPM</span>
-        <span class="text-lg font-bold text-white">{stats.oDpm}</span>
-      </div>
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">D-DPM</span>
-        <span class="text-lg font-bold text-white">{stats.dDpm}</span>
-      </div>
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">3yr RAPM</span>
-        <span class="text-lg font-bold text-white">{stats.rapm}</span>
-      </div>
-    </div>
-
-    <p class="mb-3 mt-8 text-xs font-semibold uppercase tracking-widest text-gray-500">
-      Scoring
-    </p>
-    <div class="grid grid-cols-3 gap-3">
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">Pts/75</span>
-        <span class="text-lg font-bold text-white">{stats.pts75}</span>
-      </div>
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">3P%</span>
-        <span class="text-lg font-bold text-white">{stats.threePct}</span>
-      </div>
-      <div class="flex flex-col items-center gap-1 rounded-lg bg-gray-800 px-4 py-3">
-        <span class="text-xs uppercase tracking-wide text-gray-400">FT%</span>
-        <span class="text-lg font-bold text-white">{stats.ftPct}</span>
-      </div>
-    </div>
+    <PlayerStatsPageWithQuery client:only="react" player={player} />
   </main>
 </Layout>

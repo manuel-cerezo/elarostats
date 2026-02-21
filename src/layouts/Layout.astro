@@ -13,7 +13,7 @@ const currentPath = Astro.url.pathname;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content="NBA stats and analytics" />
@@ -22,10 +22,20 @@ const currentPath = Astro.url.pathname;
     <title>{title}</title>
     <ViewTransitions />
     <Analytics />
+    <!-- Anti-flash: aplicar tema antes del primer paint -->
+    <script is:inline>
+      (function () {
+        var stored = localStorage.getItem("elarostats-theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = stored === "light" ? "light" : stored === "dark" ? "dark" : prefersDark ? "dark" : "light";
+        if (theme === "dark") document.documentElement.classList.add("dark");
+        else document.documentElement.classList.remove("dark");
+      })();
+    </script>
   </head>
-  <body class="min-h-screen bg-gray-950 text-white">
+  <body class="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
     <!-- Nav header -->
-    <header transition:persist="nav" class="sticky top-0 z-40 border-b border-gray-800/60 bg-gray-950/95 backdrop-blur-sm">
+    <header transition:persist="nav" class="sticky top-0 z-40 border-b border-gray-200/60 bg-white/95 backdrop-blur-sm dark:border-gray-800/60 dark:bg-gray-950/95">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <a href="/" class="text-lg font-extrabold tracking-tight">
           elaro<span class="text-orange-500">stats</span>
@@ -33,19 +43,19 @@ const currentPath = Astro.url.pathname;
         <nav class="flex items-center gap-1">
           <a
             href="/"
-            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath === '/' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'}`}
+            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath === '/' ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white'}`}
           >
             Inicio
           </a>
           <a
             href="/games"
-            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath.startsWith('/games') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'}`}
+            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath.startsWith('/games') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white'}`}
           >
             Partidos
           </a>
           <a
             href="/teams"
-            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath.startsWith('/teams') ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800/60 hover:text-white'}`}
+            class={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${currentPath.startsWith('/teams') ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white'}`}
           >
             Equipos
           </a>

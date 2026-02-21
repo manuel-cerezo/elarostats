@@ -1,11 +1,20 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import HeroWithQuery from "../components/HeroWithQuery";
+import TodaysGamesWithQuery from "../components/TodaysGamesWithQuery";
+import TeamsGridWithQuery from "../components/TeamsGridWithQuery";
 import "../styles/global.css";
 ---
 
 <Layout title="elarostats — NBA Stats & Analytics">
-  <main>
+  <main class="relative flex flex-col items-center gap-12 px-4 pb-16">
     <HeroWithQuery client:only="react" />
+    <section class="mx-auto max-w-5xl px-4 pb-12">
+      <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
+        Partidos de hoy
+      </h2>
+      <TodaysGamesWithQuery client:only="react" />
+    </section>
+    <TeamsGridWithQuery client:only="react" />
   </main>
 </Layout>
