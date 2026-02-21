@@ -1,8 +1,10 @@
 import { useAllTeams } from "../hooks/useAllTeams";
+import { useTranslation } from "../hooks/useTranslation";
 import { getTeamLogoUrl } from "../utils/playerStats";
 
 export default function TeamsGrid() {
   const { data: teams, isLoading, isError } = useAllTeams();
+  const { t } = useTranslation();
 
   if (isLoading) {
     return (
@@ -17,7 +19,7 @@ export default function TeamsGrid() {
   return (
     <div className="w-full max-w-3xl">
       <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-500">
-        Equipos
+        {t("teams")}
       </p>
       <div className="grid grid-cols-5 gap-3 sm:grid-cols-6 md:grid-cols-10">
         {teams.map((team) => {

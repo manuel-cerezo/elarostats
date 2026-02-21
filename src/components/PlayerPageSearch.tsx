@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useAllPlayers } from "../hooks/useAllPlayers";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { useTranslation } from "../hooks/useTranslation";
 import type { Player } from "../types/player";
 import { MAX_SEARCH_RESULTS } from "../constants/player";
 
@@ -10,6 +11,7 @@ export default function PlayerPageSearch() {
   const [activeIndex, setActiveIndex] = useState(-1);
 
   const { data: allPlayers = [], isLoading } = useAllPlayers();
+  const { t } = useTranslation();
 
   const containerRef = useClickOutside<HTMLDivElement>(() => setIsOpen(false));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -67,11 +69,11 @@ export default function PlayerPageSearch() {
         value={query}
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={isLoading ? "Loading players…" : "Search a player..."}
+        placeholder={isLoading ? t("loadingPlayers") : t("searchPlaceholder")}
         disabled={isLoading}
         className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:border-orange-500 disabled:opacity-50"
         autoComplete="off"
-        aria-label="Search players"
+        aria-label={t("search")}
       />
       {isOpen && results.length > 0 && (
         <ul
