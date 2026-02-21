@@ -16,8 +16,7 @@ export default function PlayerHeader({ player }: PlayerHeaderProps) {
         alt={player.Name}
         className="h-20 w-20 rounded-full border-2 border-gray-200 object-cover dark:border-gray-700"
         onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src =
-            PLAYER_HEADSHOT_FALLBACK_URL;
+          (e.currentTarget as HTMLImageElement).src = PLAYER_HEADSHOT_FALLBACK_URL;
         }}
       />
       <div className="flex flex-1 items-center justify-between gap-2">
@@ -26,7 +25,7 @@ export default function PlayerHeader({ player }: PlayerHeaderProps) {
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {player.TeamAbbreviation} · {player.Pos2}
           </p>
-          {player["Offensive Archetype"] && (
+          {player["Offensive Archetype"] && player["Offensive Archetype"] !== "nan" && (
             <span className="mt-1 inline-block rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-400">
               {player["Offensive Archetype"]}
             </span>

@@ -22,14 +22,13 @@ function PlayerRow({ player }: { player: Player }) {
         alt={player.Name}
         className="h-14 w-14 flex-shrink-0 rounded-full border-2 border-gray-200 object-cover dark:border-gray-700"
         onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src =
-            PLAYER_HEADSHOT_FALLBACK_URL;
+          (e.currentTarget as HTMLImageElement).src = PLAYER_HEADSHOT_FALLBACK_URL;
         }}
       />
       <div className="min-w-0 flex-1">
         <p className="truncate font-bold text-gray-900 dark:text-white">{player.Name}</p>
         <p className="text-sm text-gray-500 dark:text-gray-400">{player.Pos2}</p>
-        {player["Offensive Archetype"] && (
+        {player["Offensive Archetype"] && player["Offensive Archetype"] !== "nan" && (
           <span className="mt-0.5 inline-block rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-500 dark:text-orange-400">
             {player["Offensive Archetype"]}
           </span>
@@ -49,7 +48,9 @@ function PlayerRow({ player }: { player: Player }) {
           <p className="font-bold text-gray-900 dark:text-white">{stats.tsPct}</p>
         </div>
         <div className="text-center">
-          <p className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">3yr RAPM</p>
+          <p className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500">
+            3yr RAPM
+          </p>
           <p className="font-bold text-gray-900 dark:text-white">{stats.rapm}</p>
         </div>
       </div>
@@ -104,10 +105,18 @@ export default function TeamRoster({ team }: TeamRosterProps) {
           {t("player")}
         </p>
         <div className="grid grid-cols-4 gap-4 pr-0">
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">DPM</p>
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">Pts/75</p>
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">TS%</p>
-          <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">3yr RAPM</p>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            DPM
+          </p>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            Pts/75
+          </p>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            TS%
+          </p>
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+            3yr RAPM
+          </p>
         </div>
       </div>
       <div className="flex flex-col gap-3">
