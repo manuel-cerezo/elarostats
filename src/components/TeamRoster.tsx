@@ -1,5 +1,6 @@
 import type { Team } from "../lib/teams";
 import { useTeamPlayers } from "../hooks/useTeamPlayers";
+import { useTranslation } from "../hooks/useTranslation";
 import { formatPlayerStats, getHeadshotUrl } from "../utils/playerStats";
 import { PLAYER_HEADSHOT_FALLBACK_URL } from "../constants/player";
 import type { Player } from "../types/player";
@@ -68,6 +69,7 @@ function PlayerRow({ player }: { player: Player }) {
 
 export default function TeamRoster({ team }: TeamRosterProps) {
   const { data: players, isLoading, isError } = useTeamPlayers(team.teamId);
+  const { t } = useTranslation();
 
   if (isLoading) {
     return (
@@ -80,7 +82,7 @@ export default function TeamRoster({ team }: TeamRosterProps) {
   if (isError) {
     return (
       <div className="mt-8 rounded-lg border border-red-900 bg-red-950/30 p-6 text-center text-red-400">
-        Error al cargar los jugadores. Inténtalo de nuevo.
+        {t("errorLoadingPlayers")}
       </div>
     );
   }
@@ -88,7 +90,7 @@ export default function TeamRoster({ team }: TeamRosterProps) {
   if (!players?.length) {
     return (
       <div className="mt-8 rounded-lg border border-gray-800 p-6 text-center text-gray-500">
-        No hay jugadores disponibles para este equipo.
+        {t("noPlayers")}
       </div>
     );
   }
@@ -99,7 +101,7 @@ export default function TeamRoster({ team }: TeamRosterProps) {
     <div className="mt-8">
       <div className="mb-4 hidden grid-cols-[1fr_auto] items-center sm:grid">
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
-          Jugador
+          {t("player")}
         </p>
         <div className="grid grid-cols-4 gap-4 pr-0">
           <p className="text-center text-xs font-semibold uppercase tracking-widest text-gray-500">DPM</p>

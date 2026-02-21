@@ -4,6 +4,8 @@ import { getAllTeams } from "../../lib/teams";
 import { getTeamLogoUrl } from "../../utils/playerStats";
 import PlayerPageSearchWithQuery from "../../components/PlayerPageSearchWithQuery";
 import TeamRosterWithQuery from "../../components/TeamRosterWithQuery";
+import LanguageSelectorWithQuery from "../../components/LanguageSelectorWithQuery";
+import TranslatedTextWithQuery from "../../components/TranslatedTextWithQuery";
 
 export async function getStaticPaths() {
   const teams = await getAllTeams();
@@ -36,15 +38,18 @@ const teamLogoUrl = getTeamLogoUrl(team.teamId);
       >
         <path d="M19 12H5M12 19l-7-7 7-7"></path>
       </svg>
-      Back
+      <TranslatedTextWithQuery client:only="react" k="back" />
     </a>
 
     <a href="/" class="text-lg font-extrabold tracking-tight">
       elaro<span class="text-orange-500">stats</span>
     </a>
 
-    <div class="w-64">
-      <PlayerPageSearchWithQuery client:only="react" />
+    <div class="flex items-center gap-3">
+      <LanguageSelectorWithQuery client:only="react" />
+      <div class="w-48">
+        <PlayerPageSearchWithQuery client:only="react" />
+      </div>
     </div>
   </header>
 
@@ -69,7 +74,7 @@ const teamLogoUrl = getTeamLogoUrl(team.teamId);
     </div>
 
     <p class="mb-1 mt-10 text-xs font-semibold uppercase tracking-widest text-gray-500">
-      Plantilla
+      <TranslatedTextWithQuery client:only="react" k="roster" />
     </p>
 
     <TeamRosterWithQuery client:only="react" team={team} />

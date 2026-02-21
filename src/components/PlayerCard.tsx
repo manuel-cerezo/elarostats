@@ -1,5 +1,6 @@
 import type { Player } from "../types/player";
 import { formatPlayerStats } from "../utils/playerStats";
+import { useTranslation } from "../hooks/useTranslation";
 import PlayerHeader from "./PlayerHeader";
 import StatCell from "./StatCell";
 
@@ -10,6 +11,7 @@ interface PlayerCardProps {
 
 export default function PlayerCard({ player, onClose }: PlayerCardProps) {
   const stats = formatPlayerStats(player);
+  const { t } = useTranslation();
 
   return (
     <div
@@ -23,7 +25,7 @@ export default function PlayerCard({ player, onClose }: PlayerCardProps) {
         <button
           onClick={onClose}
           className="absolute right-4 top-4 text-gray-500 transition hover:text-white"
-          aria-label="Close"
+          aria-label={t("closeModal")}
         >
           ✕
         </button>
@@ -31,13 +33,13 @@ export default function PlayerCard({ player, onClose }: PlayerCardProps) {
         <PlayerHeader player={player} />
 
         <div className="mt-5 grid grid-cols-3 gap-2">
-          <StatCell label="Games" value={player.GamesPlayed} />
+          <StatCell label={t("games")} value={player.GamesPlayed} />
           <StatCell label="MPG" value={player.MPG?.toFixed(1)} />
           <StatCell label="TS%" value={stats.tsPct} />
         </div>
 
         <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-gray-500">
-          Impact
+          {t("impact")}
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <StatCell label="DPM" value={stats.dpm} />
@@ -47,7 +49,7 @@ export default function PlayerCard({ player, onClose }: PlayerCardProps) {
         </div>
 
         <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-gray-500">
-          Scoring
+          {t("scoring")}
         </p>
         <div className="grid grid-cols-3 gap-2">
           <StatCell label="Pts/75" value={stats.pts75} />
