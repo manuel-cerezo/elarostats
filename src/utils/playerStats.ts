@@ -24,6 +24,11 @@ export function getHeadshotUrl(nbaId: number): string {
   return `${NBA_CDN_BASE_URL}/${nbaId}.png`;
 }
 
+export function getTeamLogoUrl(teamId: number | undefined): string | undefined {
+  if (!teamId) return undefined;
+  return `/teams/${teamId}.svg`;
+}
+
 export interface FormattedPlayerStats {
   tsPct: string;
   dpm: string;
