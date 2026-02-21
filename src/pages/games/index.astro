@@ -1,0 +1,10 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import LiveGameViewWithQuery from "../../components/LiveGameViewWithQuery";
+---
+
+<Layout title="Partido en vivo — elarostats">
+  <main class="mx-auto max-w-5xl px-4 py-8">
+    <LiveGameViewWithQuery client:only="react" />
+  </main>
+</Layout>
