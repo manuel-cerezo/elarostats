@@ -2,278 +2,251 @@ import { useEffect, useState } from "react";
 import teamsData from "../data/teams.json";
 import { useTranslation } from "../hooks/useTranslation";
 
-interface GameTeam {
-  teamId: number;
-  teamName: string;
-  teamCity: string;
-  teamTricode: string;
-  wins: number;
-  losses: number;
-  score: number;
-  periods: { period: number; score: number }[];
+const PBPSTATS_BASE = "https://api.pbpstats.com";
+
+// --- Types ---
+
+interface PbpGame {
+  gameid: string;
+  time: string;
+  home: string; // e.g. "PHX 41"
+  away: string; // e.g. "ORL 51"
 }
 
-interface GameLeader {
-  personId: number;
-  name: string;
-  jerseyNum: string;
-  position: string;
-  teamTricode: string;
-  playerSlug: string;
-  points: number;
-  rebounds: number;
-  assists: number;
+interface PbpGamesResponse {
+  live_games: number;
+  game_data: PbpGame[];
 }
 
-interface Game {
+interface GameInfo {
+  home_score: number;
+  home_team: string;
+  visitor_score: number;
+  visitor_team: string;
+  status: string;
+  clock: string;
+  home_win_probability?: number;
+  visitor_win_probability?: number;
+}
+
+interface TeamStatRow {
+  stat: string;
+  home: number | string;
+  visitor: number | string;
+}
+
+interface GameDetail {
+  game_data: {
+    rows: TeamStatRow[];
+    game_info: GameInfo;
+    headers: { field: string; label: string }[];
+  };
+  status: string;
+}
+
+interface ParsedGame {
   gameId: string;
-  gameStatus: number;
-  gameStatusText: string;
-  period: number;
-  gameClock: string;
-  gameTimeUTC: string;
-  homeTeam: GameTeam;
-  awayTeam: GameTeam;
-  gameLeaders?: {
-    homeLeaders: GameLeader;
-    awayLeaders: GameLeader;
-  };
+  time: string;
+  homeAbbr: string;
+  homeScore: number;
+  awayAbbr: string;
+  awayScore: number;
+  isLive: boolean;
+  isFinal: boolean;
+  detail?: GameDetail;
 }
 
-interface ScoreboardData {
-  scoreboard: {
-    gameDate: string;
-    games: Game[];
-  };
+// --- Helpers ---
+
+const abbrToTeamId = new Map(teamsData.map((t) => [t.abbreviation, t.teamId]));
+const teamByAbbr = new Map(teamsData.map((t) => [t.abbreviation, t]));
+
+function parseTeamField(field: string): { abbr: string; score: number } {
+  const parts = field.trim().split(" ");
+  return { abbr: parts[0] ?? "", score: parseInt(parts[1] ?? "0", 10) };
 }
 
-const teamById = new Map(teamsData.map((t) => [t.teamId, t]));
+function getStatValue(rows: TeamStatRow[], stat: string, side: "home" | "visitor"): string | number | undefined {
+  const row = rows.find((r) => r.stat === stat);
+  return row ? row[side] : undefined;
+}
 
-function getLocalTime(utcTimeStr: string, timezone: string): string {
-  try {
-    return new Date(utcTimeStr).toLocaleTimeString("es-ES", {
-      timeZone: timezone,
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  } catch {
-    return new Date(utcTimeStr).toLocaleTimeString("es-ES", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+// Key stats we display
+const DISPLAY_STATS = [
+  "Points",
+  "eFG%",
+  "TS%",
+  "3pt FG%",
+  "FT%",
+  "Offensive Rating",
+  "Possessions",
+  "Assist Points",
+  "Second Chance Points",
+  "Penalty Points",
+] as const;
+
+function formatStatValue(value: string | number | undefined): string {
+  if (value === undefined) return "—";
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) return String(value);
+    return value.toFixed(1);
   }
+  return String(value);
 }
 
-function formatClock(clock: string): string {
-  if (!clock) return "";
-  const match = clock.match(/PT(\d+)M([\d.]+)S/);
-  if (!match) return clock;
-  const mins = match[1];
-  const secs = Math.floor(parseFloat(match[2])).toString().padStart(2, "0");
-  return `${mins}:${secs}`;
-}
+// --- Components ---
 
-function PeriodScores({ team, periods }: { team: GameTeam; periods: number }) {
+function StatRow({
+  label,
+  home,
+  away,
+}: {
+  label: string;
+  home: string;
+  away: string;
+}) {
   return (
-    <>
-      {Array.from({ length: periods }, (_, i) => i + 1).map((p) => {
-        const period = team.periods.find((pr) => pr.period === p);
-        return (
-          <td
-            key={p}
-            className="px-3 py-2 text-center text-sm tabular-nums text-gray-400"
-          >
-            {period?.score ?? "—"}
-          </td>
-        );
-      })}
-    </>
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 py-1">
+      <span className="text-right text-sm tabular-nums text-gray-300">{home}</span>
+      <span className="min-w-[120px] text-center text-xs text-gray-500">{label}</span>
+      <span className="text-left text-sm tabular-nums text-gray-300">{away}</span>
+    </div>
   );
 }
 
 function GameCard({
   game,
-  timezone,
   t,
 }: {
-  game: Game;
-  timezone: string;
+  game: ParsedGame;
   t: ReturnType<typeof useTranslation>["t"];
 }) {
-  const isLive = game.gameStatus === 2;
-  const isFinal = game.gameStatus === 3;
-  const isPregame = game.gameStatus === 1;
+  const hasStarted = game.homeScore > 0 || game.awayScore > 0;
+  const homeWins = hasStarted && game.homeScore > game.awayScore;
+  const awayWins = hasStarted && game.awayScore > game.homeScore;
 
-  const homeScore = game.homeTeam.score;
-  const awayScore = game.awayTeam.score;
-  const homeWins = !isPregame && homeScore > awayScore;
-  const awayWins = !isPregame && awayScore > homeScore;
+  const homeTeam = teamByAbbr.get(game.homeAbbr);
+  const awayTeam = teamByAbbr.get(game.awayAbbr);
+  const homeId = abbrToTeamId.get(game.homeAbbr);
+  const awayId = abbrToTeamId.get(game.awayAbbr);
 
-  const localTime = isPregame ? getLocalTime(game.gameTimeUTC, timezone) : null;
-  const clock = isLive ? formatClock(game.gameClock) : null;
-
-  // Max period for column headers
-  const maxPeriod = Math.max(
-    game.homeTeam.periods.length,
-    game.awayTeam.periods.length,
-    isPregame ? 4 : 4,
-  );
-
-  const homeTeamData = teamById.get(game.homeTeam.teamId);
-  const awayTeamData = teamById.get(game.awayTeam.teamId);
+  const detail = game.detail?.game_data;
+  const rows = detail?.rows ?? [];
+  const gameInfo = detail?.game_info;
 
   return (
     <div
       className={`overflow-hidden rounded-2xl border shadow-sm ${
-        isLive
+        game.isLive
           ? "border-red-500/20 bg-gray-900"
           : "border-gray-700/50 bg-gray-900"
       }`}
     >
-      {/* Game header */}
+      {/* Header with status */}
       <div className="flex items-center justify-between border-b border-gray-800/60 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          {isLive && (
+          {game.isLive && (
             <span className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-semibold text-red-400">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-              {game.period > 4 ? `OT${game.period - 4}` : `Q${game.period}`}
-              {clock ? ` · ${clock}` : ""}
+              {game.time}
             </span>
           )}
-          {isFinal && (
+          {game.isFinal && (
             <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-gray-400">
               Final
             </span>
           )}
-          {isPregame && (
+          {!game.isLive && !game.isFinal && (
             <span className="text-sm font-semibold text-orange-400">
-              {localTime}
+              {game.time}
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-600">
-          {game.awayTeam.wins}–{game.awayTeam.losses} vs{" "}
-          {game.homeTeam.wins}–{game.homeTeam.losses}
-        </span>
+        {gameInfo && (gameInfo.home_win_probability != null) && (
+          <span className="text-xs text-gray-600">
+            WP: {gameInfo.home_win_probability}% – {gameInfo.visitor_win_probability}%
+          </span>
+        )}
       </div>
 
-      {/* Scoreboard table */}
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-800/40">
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600">
-                {t("teamLabel")}
-              </th>
-              {!isPregame &&
-                Array.from({ length: maxPeriod }, (_, i) => i + 1).map((p) => (
-                  <th
-                    key={p}
-                    className="px-3 py-2 text-center text-xs font-medium text-gray-600"
-                  >
-                    {p > 4 ? `OT${p - 4}` : `Q${p}`}
-                  </th>
-                ))}
-              {!isPregame && (
-                <th className="px-3 py-2 text-center text-xs font-bold text-gray-500">
-                  T
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Away team row */}
-            <tr className={`border-b border-gray-800/30 ${awayWins ? "" : isFinal || isLive ? "opacity-50" : ""}`}>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={`/teams/${game.awayTeam.teamId}.svg`}
-                    alt={game.awayTeam.teamTricode}
-                    className="h-8 w-8 flex-shrink-0 object-contain"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                  <div>
-                    <div className={`font-semibold ${awayWins ? "text-white" : "text-gray-300"}`}>
-                      {awayTeamData?.teamName ?? `${game.awayTeam.teamCity} ${game.awayTeam.teamName}`}
-                    </div>
-                    <div className="text-xs text-gray-500">{t("away")}</div>
-                  </div>
-                </div>
-              </td>
-              {!isPregame && (
-                <PeriodScores team={game.awayTeam} periods={maxPeriod} />
-              )}
-              {!isPregame && (
-                <td className="px-3 py-3 text-center">
-                  <span className={`text-lg font-bold tabular-nums ${awayWins ? "text-white" : "text-gray-500"}`}>
-                    {game.awayTeam.score}
-                  </span>
-                </td>
-              )}
-            </tr>
+      {/* Scoreboard */}
+      <div className="px-4 py-4">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4">
+          {/* Away team */}
+          <div className={`flex items-center justify-end gap-3 ${hasStarted && !awayWins ? "opacity-50" : ""}`}>
+            <div className="text-right">
+              <div className={`font-semibold ${awayWins ? "text-white" : "text-gray-300"}`}>
+                {awayTeam?.teamName ?? game.awayAbbr}
+              </div>
+              <div className="text-xs text-gray-500">{t("away")}</div>
+            </div>
+            {awayId && (
+              <img
+                src={`/teams/${awayId}.svg`}
+                alt={game.awayAbbr}
+                className="h-10 w-10 flex-shrink-0 object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            )}
+          </div>
 
-            {/* Home team row */}
-            <tr className={homeWins ? "" : isFinal || isLive ? "opacity-50" : ""}>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={`/teams/${game.homeTeam.teamId}.svg`}
-                    alt={game.homeTeam.teamTricode}
-                    className="h-8 w-8 flex-shrink-0 object-contain"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = "none";
-                    }}
-                  />
-                  <div>
-                    <div className={`font-semibold ${homeWins ? "text-white" : "text-gray-300"}`}>
-                      {homeTeamData?.teamName ?? `${game.homeTeam.teamCity} ${game.homeTeam.teamName}`}
-                    </div>
-                    <div className="text-xs text-gray-500">{t("home")}</div>
-                  </div>
-                </div>
-              </td>
-              {!isPregame && (
-                <PeriodScores team={game.homeTeam} periods={maxPeriod} />
-              )}
-              {!isPregame && (
-                <td className="px-3 py-3 text-center">
-                  <span className={`text-lg font-bold tabular-nums ${homeWins ? "text-white" : "text-gray-500"}`}>
-                    {game.homeTeam.score}
-                  </span>
-                </td>
-              )}
-            </tr>
-          </tbody>
-        </table>
+          {/* Score */}
+          {hasStarted ? (
+            <div className="text-center">
+              <span className="text-3xl font-bold tabular-nums text-white">
+                {game.awayScore}
+                <span className="mx-2 text-lg text-gray-600">–</span>
+                {game.homeScore}
+              </span>
+            </div>
+          ) : (
+            <span className="text-center text-sm text-gray-500">vs</span>
+          )}
+
+          {/* Home team */}
+          <div className={`flex items-center justify-start gap-3 ${hasStarted && !homeWins ? "opacity-50" : ""}`}>
+            {homeId && (
+              <img
+                src={`/teams/${homeId}.svg`}
+                alt={game.homeAbbr}
+                className="h-10 w-10 flex-shrink-0 object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            )}
+            <div>
+              <div className={`font-semibold ${homeWins ? "text-white" : "text-gray-300"}`}>
+                {homeTeam?.teamName ?? game.homeAbbr}
+              </div>
+              <div className="text-xs text-gray-500">{t("home")}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Game leaders (if game started) */}
-      {!isPregame && game.gameLeaders && (
-        <div className="border-t border-gray-800/40 px-4 py-2.5">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-600">
-            {t("leaders")}
+      {/* Team stats comparison */}
+      {hasStarted && rows.length > 0 && (
+        <div className="border-t border-gray-800/40 px-4 py-3">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-gray-600">
+            {t("teamStats")}
           </p>
-          <div className="flex items-start justify-between gap-4">
-            <div className="text-xs text-gray-400">
-              <span className="font-medium text-gray-300">
-                {game.gameLeaders.awayLeaders.name}
-              </span>{" "}
-              · {game.gameLeaders.awayLeaders.points}pts /{" "}
-              {game.gameLeaders.awayLeaders.rebounds}reb /{" "}
-              {game.gameLeaders.awayLeaders.assists}ast
-            </div>
-            <div className="text-right text-xs text-gray-400">
-              <span className="font-medium text-gray-300">
-                {game.gameLeaders.homeLeaders.name}
-              </span>{" "}
-              · {game.gameLeaders.homeLeaders.points}pts /{" "}
-              {game.gameLeaders.homeLeaders.rebounds}reb /{" "}
-              {game.gameLeaders.homeLeaders.assists}ast
-            </div>
+          <div className="divide-y divide-gray-800/30">
+            {DISPLAY_STATS.map((statName) => {
+              const home = getStatValue(rows, statName, "home");
+              const away = getStatValue(rows, statName, "visitor");
+              if (home === undefined && away === undefined) return null;
+              return (
+                <StatRow
+                  key={statName}
+                  label={statName}
+                  home={formatStatValue(home)}
+                  away={formatStatValue(away)}
+                />
+              );
+            })}
           </div>
         </div>
       )}
@@ -281,35 +254,65 @@ function GameCard({
   );
 }
 
+// --- Main component ---
+
 export default function GamesView() {
   const { t, locale } = useTranslation();
-  const [games, setGames] = useState<Game[]>([]);
+  const [games, setGames] = useState<ParsedGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [timezone, setTimezone] = useState("UTC");
-  const [gameDate, setGameDate] = useState("");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("elarostats_timezone");
-    if (stored) {
-      setTimezone(stored);
-    } else {
-      const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      setTimezone(detected);
-      localStorage.setItem("elarostats_timezone", detected);
-    }
-  }, []);
 
   useEffect(() => {
     async function fetchGames() {
       try {
-        const res = await fetch(
-          "https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json",
+        // 1. Fetch game list
+        const listRes = await fetch(`${PBPSTATS_BASE}/live/games/nba`);
+        if (!listRes.ok) throw new Error("Failed to fetch games list");
+        const listData: PbpGamesResponse = await listRes.json();
+
+        // Parse basic game data
+        const parsed: ParsedGame[] = listData.game_data.map((g) => {
+          const home = parseTeamField(g.home);
+          const away = parseTeamField(g.away);
+          const hasStarted = home.score > 0 || away.score > 0;
+          const isFinal = g.time.toLowerCase() === "final" || g.time.toLowerCase().startsWith("final");
+          const isLive = hasStarted && !isFinal;
+          return {
+            gameId: g.gameid,
+            time: g.time,
+            homeAbbr: home.abbr,
+            homeScore: home.score,
+            awayAbbr: away.abbr,
+            awayScore: away.score,
+            isLive,
+            isFinal,
+          };
+        });
+
+        // 2. Fetch details for started games (live or final)
+        const startedGames = parsed.filter((g) => g.isLive || g.isFinal);
+        const details = await Promise.allSettled(
+          startedGames.map(async (g) => {
+            const res = await fetch(`${PBPSTATS_BASE}/live/game/${g.gameId}/team`);
+            if (!res.ok) return null;
+            return { gameId: g.gameId, detail: (await res.json()) as GameDetail };
+          }),
         );
-        if (!res.ok) throw new Error("Failed");
-        const data: ScoreboardData = await res.json();
-        setGames(data.scoreboard.games);
-        setGameDate(data.scoreboard.gameDate);
+
+        // Merge details into games
+        const detailMap = new Map<string, GameDetail>();
+        details.forEach((result) => {
+          if (result.status === "fulfilled" && result.value) {
+            detailMap.set(result.value.gameId, result.value.detail);
+          }
+        });
+
+        const enriched = parsed.map((g) => ({
+          ...g,
+          detail: detailMap.get(g.gameId),
+        }));
+
+        setGames(enriched);
         setError(false);
       } catch {
         setError(true);
@@ -352,74 +355,59 @@ export default function GamesView() {
     );
   }
 
-  const formattedDate = gameDate
-    ? new Date(gameDate + "T12:00:00").toLocaleDateString(
-        locale === "en" ? "en-US" : "es-ES",
-        {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        },
-      )
-    : "";
+  const today = new Date().toLocaleDateString(
+    locale === "en" ? "en-US" : "es-ES",
+    { weekday: "long", year: "numeric", month: "long", day: "numeric" },
+  );
 
-  // Group by status: live > final > pregame
-  const liveGames = games.filter((g) => g.gameStatus === 2);
-  const finalGames = games.filter((g) => g.gameStatus === 3);
-  const pregameGames = games.filter((g) => g.gameStatus === 1);
-  const sortedGames = [...liveGames, ...pregameGames, ...finalGames];
+  const liveGames = games.filter((g) => g.isLive);
+  const pregameGames = games.filter((g) => !g.isLive && !g.isFinal);
+  const finalGames = games.filter((g) => g.isFinal);
 
   return (
     <div>
       <div className="mb-6 flex items-baseline justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">{t("gamesPageTitle")}</h1>
-          {formattedDate && (
-            <p className="mt-0.5 text-sm capitalize text-gray-500">{formattedDate}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <span className="h-1.5 w-1.5 rounded-full bg-gray-600" />
-          {timezone}
+          <p className="mt-0.5 text-sm capitalize text-gray-500">{today}</p>
         </div>
       </div>
 
       {liveGames.length > 0 && (
-        <div className="mb-2">
+        <div className="mb-6">
           <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-red-400">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
             {t("live")}
           </p>
           <div className="space-y-4">
             {liveGames.map((game) => (
-              <GameCard key={game.gameId} game={game} timezone={timezone} t={t} />
+              <GameCard key={game.gameId} game={game} t={t} />
             ))}
           </div>
         </div>
       )}
 
       {pregameGames.length > 0 && (
-        <div className="mb-6 mt-6">
+        <div className="mb-6">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
             {t("upcoming")}
           </p>
           <div className="space-y-4">
             {pregameGames.map((game) => (
-              <GameCard key={game.gameId} game={game} timezone={timezone} t={t} />
+              <GameCard key={game.gameId} game={game} t={t} />
             ))}
           </div>
         </div>
       )}
 
       {finalGames.length > 0 && (
-        <div className="mt-6">
+        <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
             {t("finished")}
           </p>
           <div className="space-y-4">
             {finalGames.map((game) => (
-              <GameCard key={game.gameId} game={game} timezone={timezone} t={t} />
+              <GameCard key={game.gameId} game={game} t={t} />
             ))}
           </div>
         </div>

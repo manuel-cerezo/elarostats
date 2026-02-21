@@ -44,6 +44,7 @@ export const en = {
   away: "Away",
   home: "Home",
   leaders: "Leaders",
+  teamStats: "Team Stats",
   errorLoadingGames: "Could not load games.",
   noGamesToday: "No games scheduled today.",
 

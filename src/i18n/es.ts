@@ -44,6 +44,7 @@ export const es = {
   away: "Visitante",
   home: "Local",
   leaders: "Líderes",
+  teamStats: "Estadísticas de equipo",
   errorLoadingGames: "No se pudieron cargar los partidos.",
   noGamesToday: "No hay partidos programados hoy.",
 
