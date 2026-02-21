@@ -1,4 +1,3 @@
-import playersData from "../data/players.json";
 import type { Player } from "../types/player";
 import { supabase } from "../lib/supabase";
 
@@ -7,8 +6,6 @@ export type { Player };
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const localPlayers = playersData as Player[];
 
 /**
  * Maps a raw Supabase row (snake_case columns + raw_data JSONB) back to
@@ -51,7 +48,7 @@ function rowToPlayer(row: Record<string, unknown>): Player {
 }
 
 // ---------------------------------------------------------------------------
-// Data source — Supabase when configured, local JSON otherwise
+// Data source — Supabase (siempre requerido)
 // ---------------------------------------------------------------------------
 
 let _cachedPlayers: Player[] | null = null;
@@ -59,28 +56,25 @@ let _cachedPlayers: Player[] | null = null;
 async function loadPlayers(): Promise<Player[]> {
   if (_cachedPlayers) return _cachedPlayers;
 
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("player_stats")
-      .select("*")
-      .order("dpm", { ascending: false });
-
-    if (!error && data && data.length > 0) {
-      _cachedPlayers = data.map((row) =>
-        rowToPlayer(row as Record<string, unknown>),
-      );
-      return _cachedPlayers;
-    }
-
-    if (error) {
-      console.warn(
-        "[elarostats] Supabase query failed, falling back to local data:",
-        error.message,
-      );
-    }
+  if (!supabase) {
+    throw new Error(
+      "[elarostats] Supabase no está configurado. " +
+        "Define PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY en tu .env",
+    );
   }
 
-  _cachedPlayers = localPlayers;
+  const { data, error } = await supabase
+    .from("player_stats")
+    .select("*")
+    .order("dpm", { ascending: false });
+
+  if (error) {
+    throw new Error(`[elarostats] Error consultando Supabase: ${error.message}`);
+  }
+
+  _cachedPlayers = (data ?? []).map((row) =>
+    rowToPlayer(row as Record<string, unknown>),
+  );
   return _cachedPlayers;
 }
 
