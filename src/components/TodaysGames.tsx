@@ -32,7 +32,11 @@ function GameCard({ game, onClick }: GameCardProps) {
         {/* Away — right-aligned */}
         <div className="flex items-center justify-end gap-1.5">
           {awayLogo && (
-            <img src={awayLogo} alt={game.awayTeam} className="h-6 w-6 flex-shrink-0 object-contain" />
+            <img
+              src={awayLogo}
+              alt={game.awayTeam}
+              className="h-6 w-6 flex-shrink-0 object-contain"
+            />
           )}
           <span className="text-sm font-semibold text-gray-200">{game.awayTeam}</span>
         </div>
@@ -52,7 +56,11 @@ function GameCard({ game, onClick }: GameCardProps) {
         <div className="flex items-center justify-start gap-1.5">
           <span className="text-sm font-semibold text-gray-200">{game.homeTeam}</span>
           {homeLogo && (
-            <img src={homeLogo} alt={game.homeTeam} className="h-6 w-6 flex-shrink-0 object-contain" />
+            <img
+              src={homeLogo}
+              alt={game.homeTeam}
+              className="h-6 w-6 flex-shrink-0 object-contain"
+            />
           )}
         </div>
       </div>
@@ -77,8 +85,8 @@ export default function TodaysGames() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-800" />
         ))}
       </div>
@@ -98,7 +106,7 @@ export default function TodaysGames() {
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {games.map((game) => (
         <GameCard key={game.gameid} game={game} onClick={handleGameClick} />
       ))}
