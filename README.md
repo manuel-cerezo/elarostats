@@ -119,7 +119,7 @@ cp .env.example .env
 | Variable                   | Where to find it                              |
 | -------------------------- | --------------------------------------------- |
 | `PUBLIC_SUPABASE_URL`      | Project Settings → API → Project URL          |
-| `PUBLIC_SUPABASE_ANON_KEY` | Project Settings → API → anon / public key    |
+| `PUBLIC_SUPABASE_ANON`     | Project Settings → API → anon / public key    |
 | `SUPABASE_SERVICE_KEY`     | Project Settings → API → service_role key     |
 
 ### 5. Initial data load

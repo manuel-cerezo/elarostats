@@ -1,22 +1,15 @@
-/**
- * Supabase Edge Function — sync-players
- *
- * Fetches the current-season NBA player stats snapshot from the
- * databallr API and upserts every player row into the Supabase
- * `player_stats` table.
- *
- * Triggered daily at 08:00 Europe/Madrid via pg_cron + pg_net
- * (see supabase/migrations/002_setup_cron.sql).
- *
- * Can also be called manually:
- *   curl -X POST https://<project>.supabase.co/functions/v1/sync-players \
- *     -H "Authorization: Bearer <anon-or-service-key>"
- *
- * Optional JSON body:
- *   { "year": 2025 }   — override the season year (defaults to current year)
- */
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+// ---------------------------------------------------------------------------
+// Config — variables de entorno inyectadas automáticamente por Supabase
+// ---------------------------------------------------------------------------
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+const DATABALLR_BASE =
+  "https://api.databallr.com/api/supabase/player_stats_with_metrics";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,83 +39,39 @@ interface DataballrPlayer {
 }
 
 // ---------------------------------------------------------------------------
-// Main handler
+// Helpers
 // ---------------------------------------------------------------------------
 
-Deno.serve(async (req: Request) => {
-  // Only POST is allowed (pg_net calls with POST)
-  if (req.method !== "POST" && req.method !== "GET") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
-  // Parse optional body
-  let year = new Date().getFullYear();
-  try {
-    const body = await req.json().catch(() => ({}));
-    if (body?.year && typeof body.year === "number") {
-      year = body.year;
-    }
-  } catch {
-    // No body or invalid JSON — use default year
-  }
-
-  // Supabase client (service role, bypasses RLS for upsert)
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, serviceKey);
-
-  try {
-    // 1. Fetch from databallr
-    const players = await fetchPlayers(year);
-
-    // 2. Upsert into Supabase in batches of 100
-    const total = await upsertPlayers(supabase, players, year);
-
-    return new Response(
-      JSON.stringify({ ok: true, year, synced: total }),
-      { headers: { "Content-Type": "application/json" } },
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[sync-players] error:", message);
-    return new Response(
-      JSON.stringify({ ok: false, error: message }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
-  }
-});
-
-// ---------------------------------------------------------------------------
-// databallr fetch
-// ---------------------------------------------------------------------------
-
-async function fetchPlayers(year: number): Promise<DataballrPlayer[]> {
-  const url = new URL(
-    "https://api.databallr.com/api/supabase/player_stats_with_metrics",
-  );
+async function fetchPlayersFromDataballr(
+  year: number,
+  minMinutes = 50,
+  limit = 500,
+): Promise<DataballrPlayer[]> {
+  const url = new URL(DATABALLR_BASE);
   url.searchParams.set("year", String(year));
   url.searchParams.set("playoffs", "0");
-  url.searchParams.set("min_minutes", "50");
-  url.searchParams.set("limit", "500");
+  url.searchParams.set("min_minutes", String(minMinutes));
+  url.searchParams.set("limit", String(limit));
   url.searchParams.set("order_by", "dpm");
   url.searchParams.set("order_direction", "desc");
 
   const res = await fetch(url.toString());
   if (!res.ok) {
-    throw new Error(`databallr ${res.status}: ${res.statusText}`);
+    throw new Error(`databallr API error ${res.status}: ${res.statusText}`);
   }
 
-  const body = await res.json();
-  if (Array.isArray(body)) return body as DataballrPlayer[];
-  if (Array.isArray(body?.data)) return body.data as DataballrPlayer[];
-  throw new Error("Unexpected databallr response shape");
+  const body = await res.json() as
+    | DataballrPlayer[]
+    | { data?: DataballrPlayer[] };
+
+  if (Array.isArray(body)) return body;
+  if (Array.isArray((body as { data?: DataballrPlayer[] }).data)) {
+    return (body as { data: DataballrPlayer[] }).data;
+  }
+  throw new Error("Unexpected response shape from databallr API");
 }
 
-// ---------------------------------------------------------------------------
-// Supabase upsert
-// ---------------------------------------------------------------------------
-
-function toRow(p: DataballrPlayer, year: number) {
+function mapToRow(p: DataballrPlayer, year: number) {
   return {
     nba_id: p.nba_id,
     name: p.Name,
@@ -149,23 +98,44 @@ function toRow(p: DataballrPlayer, year: number) {
 }
 
 async function upsertPlayers(
-  // deno-lint-ignore no-explicit-any
-  supabase: any,
+  supabase: ReturnType<typeof createClient>,
   players: DataballrPlayer[],
   year: number,
-): Promise<number> {
-  const BATCH = 100;
-  let total = 0;
+): Promise<void> {
+  const rows = players.map((p) => mapToRow(p, year));
+  const BATCH_SIZE = 100;
 
-  for (let i = 0; i < players.length; i += BATCH) {
-    const rows = players.slice(i, i + BATCH).map((p) => toRow(p, year));
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE);
     const { error } = await supabase
       .from("player_stats")
-      .upsert(rows, { onConflict: "nba_id" });
-
-    if (error) throw new Error(`Upsert failed: ${error.message}`);
-    total += rows.length;
+      .upsert(batch, { onConflict: "nba_id" });
+    if (error) throw new Error(`Supabase upsert failed: ${error.message}`);
   }
-
-  return total;
 }
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
+
+Deno.serve(async (_req: Request) => {
+  try {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      return Response.json(
+        { ok: false, error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" },
+        { status: 500 },
+      );
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const year = new Date().getFullYear();
+
+    const players = await fetchPlayersFromDataballr(year);
+    await upsertPlayers(supabase, players, year);
+
+    return Response.json({ ok: true, year, synced: players.length });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return Response.json({ ok: false, error: message }, { status: 500 });
+  }
+});
