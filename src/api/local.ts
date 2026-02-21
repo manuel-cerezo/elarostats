@@ -59,7 +59,7 @@ async function loadPlayers(): Promise<Player[]> {
   if (!supabase) {
     throw new Error(
       "[elarostats] Supabase no está configurado. " +
-        "Define PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON_KEY en tu .env",
+        "Define PUBLIC_SUPABASE_URL y PUBLIC_SUPABASE_ANON en tu .env",
     );
   }
 
