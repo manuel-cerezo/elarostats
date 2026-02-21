@@ -23,7 +23,14 @@ export default function PlayerHeader({ player }: PlayerHeaderProps) {
         <div>
           <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white">{player.Name}</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {player.TeamAbbreviation} · {player.Pos2}
+            <a
+              href={`/teams/${player.TeamId}`}
+              className="text-orange-400 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {player.TeamAbbreviation}
+            </a>{" "}
+            · {player.Pos2}
           </p>
           {player["Offensive Archetype"] && player["Offensive Archetype"] !== "nan" && (
             <span className="mt-1 inline-block rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-400">
