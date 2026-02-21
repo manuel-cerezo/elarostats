@@ -3,8 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import { getAllPlayers } from "../../api/local";
 import { formatPlayerStats, getHeadshotUrl } from "../../utils/playerStats";
 import { PLAYER_HEADSHOT_FALLBACK_URL } from "../../constants/player";
-import PlayerPageSearch from "../../components/PlayerPageSearch";
-import { ReactQueryProvider } from "../../lib/ReactQueryProvider";
+import PlayerPageSearchWithQuery from "../../components/PlayerPageSearchWithQuery";
 
 export async function getStaticPaths() {
   const players = await getAllPlayers();
@@ -46,9 +45,7 @@ const headshotUrl = getHeadshotUrl(player.nba_id);
     </a>
 
     <div class="w-64">
-      <ReactQueryProvider client:only="react">
-        <PlayerPageSearch client:only="react" />
-      </ReactQueryProvider>
+      <PlayerPageSearchWithQuery client:only="react" />
     </div>
   </header>
 
