@@ -16,9 +16,35 @@ export async function getStaticPaths() {
 const { player } = Astro.props;
 const headshotUrl = getHeadshotUrl(player.nba_id);
 const teamLogoUrl = getTeamLogoUrl(player.TeamId);
+
+const posLabel = player.Pos2 || "Jugador";
+const teamLabel = player.TeamAbbreviation || "";
+const description = `Estadísticas avanzadas de ${player.Name}${teamLabel ? ` (${teamLabel})` : ""}: DPM, RAPM, TS%, eficiencia y métricas detalladas en elarostats.`;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: player.Name,
+  jobTitle: `${posLabel} NBA`,
+  image: headshotUrl,
+  url: `https://elarostats.vercel.app/players/${player.nba_id}`,
+  memberOf: player.TeamAbbreviation
+    ? {
+        "@type": "SportsTeam",
+        name: player.TeamAbbreviation,
+        sport: "Basketball",
+      }
+    : undefined,
+};
 ---
 
-<Layout title={`${player.Name} — elarostats`}>
+<Layout
+  title={`${player.Name} — elarostats`}
+  description={description}
+  ogImage={headshotUrl}
+  ogType="profile"
+  jsonLd={jsonLd}
+>
   <main class="mx-auto max-w-2xl px-4 py-10">
     <div class="flex items-center gap-6">
       <img

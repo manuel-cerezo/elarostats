@@ -1,9 +1,22 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import TeamsViewWithQuery from "../../components/TeamsViewWithQuery";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "Equipos NBA",
+  description: "Los 30 equipos de la NBA con estadísticas avanzadas, plantillas y clasificaciones.",
+  url: "https://elarostats.vercel.app/teams",
+  isPartOf: { "@type": "WebSite", name: "elarostats" },
+};
 ---
 
-<Layout title="Equipos NBA — elarostats">
+<Layout
+  title="Equipos NBA — elarostats"
+  description="Los 30 equipos de la NBA con estadísticas avanzadas, plantillas completas y clasificaciones actualizadas."
+  jsonLd={jsonLd}
+>
   <main class="mx-auto max-w-5xl px-4 py-8">
     <TeamsViewWithQuery client:only="react" />
   </main>
