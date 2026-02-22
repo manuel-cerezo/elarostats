@@ -127,7 +127,7 @@ function PlayerRow({
 
   return (
     <tr
-      className="cursor-pointer border-b border-gray-800/40 transition-colors hover:bg-gray-800/30"
+      className="cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50 dark:border-gray-800/40 dark:hover:bg-gray-800/30"
       onClick={() => {
         window.location.href = `/players/${player.EntityId}`;
       }}
@@ -144,14 +144,14 @@ function PlayerRow({
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
           />
-          <span className="font-semibold text-white">{player.Name}</span>
+          <span className="font-semibold text-gray-900 dark:text-white">{player.Name}</span>
         </div>
       </td>
       <td className="whitespace-nowrap px-3 py-2.5">
         <a
           href={`/teams/${player.TeamId}`}
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-gray-800/60"
+          className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/60"
         >
           <img
             src={teamLogoUrl}
@@ -161,20 +161,20 @@ function PlayerRow({
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
           />
-          <span className="text-xs text-gray-400 hover:text-orange-400">
+          <span className="text-xs text-gray-600 hover:text-orange-400 dark:text-gray-400">
             {localTeam?.abbreviation ?? player.TeamAbbreviation}
           </span>
         </a>
       </td>
       <td className="px-3 py-2.5 text-center text-sm font-semibold text-orange-400">{ppg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-300">{rpg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-300">{apg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-400">{spg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-400">{bpg}</td>
+      <td className="px-3 py-2.5 text-center text-sm text-gray-700 dark:text-gray-300">{rpg}</td>
+      <td className="px-3 py-2.5 text-center text-sm text-gray-700 dark:text-gray-300">{apg}</td>
+      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{spg}</td>
+      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{bpg}</td>
       <td className="px-3 py-2.5 text-center text-sm text-gray-500">{mpg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-400">{efg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-400">{ts}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-400">{fg3}</td>
+      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{efg}</td>
+      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{ts}</td>
+      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{fg3}</td>
       <td className="px-3 py-2.5 text-center">
         <span
           className={`text-sm font-medium ${
@@ -329,7 +329,7 @@ export default function PlayersView() {
         {Array.from({ length: 15 }, (_, i) => (
           <div
             key={i}
-            className="h-12 animate-pulse rounded-lg bg-gray-800/40"
+            className="h-12 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800/40"
           />
         ))}
       </div>
@@ -338,7 +338,7 @@ export default function PlayersView() {
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
+      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-gray-700/50 dark:bg-gray-900">
         {t("errorLoadingPlayersLeaderboard")}
       </div>
     );
@@ -347,7 +347,7 @@ export default function PlayersView() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">{t("playersPageTitle")}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("playersPageTitle")}</h1>
         <p className="mt-0.5 text-sm text-gray-500">{t("playersSeason")}</p>
       </div>
 
@@ -375,17 +375,17 @@ export default function PlayersView() {
               setVisibleCount(PAGE_SIZE);
             }}
             placeholder={t("searchPlayerPlaceholder")}
-            className="w-full rounded-lg border border-gray-700 bg-gray-800/60 px-4 py-2 pl-10 text-sm text-white placeholder-gray-500 outline-none focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/30"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 pl-10 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/30 dark:border-gray-700 dark:bg-gray-800/60 dark:text-white dark:placeholder-gray-500"
           />
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-gray-700/50 bg-gray-900">
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700/50 dark:bg-gray-900">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-800/60">
+              <tr className="border-b border-gray-200 dark:border-gray-800/60">
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                   #
                 </th>

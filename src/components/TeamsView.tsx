@@ -60,9 +60,9 @@ function ptsPerPoss(pts: number, poss: number): string {
 
 function StatBadge({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="flex flex-col items-center rounded-lg bg-gray-800/60 px-3 py-2">
+    <div className="flex flex-col items-center rounded-lg bg-gray-100 px-3 py-2 dark:bg-gray-800/60">
       <span className="text-xs text-gray-500">{label}</span>
-      <span className={`text-sm font-semibold ${highlight ? "text-orange-400" : "text-white"}`}>
+      <span className={`text-sm font-semibold ${highlight ? "text-orange-400" : "text-gray-900 dark:text-white"}`}>
         {value}
       </span>
     </div>
@@ -102,7 +102,7 @@ function TeamRow({
   return (
     <>
       <tr
-        className="cursor-pointer border-b border-gray-800/40 transition-colors hover:bg-gray-800/30"
+        className="cursor-pointer border-b border-gray-100 transition-colors hover:bg-gray-50 dark:border-gray-800/40 dark:hover:bg-gray-800/30"
         onClick={onClick}
       >
         <td className="px-4 py-3 text-sm font-medium text-gray-600">{rank}</td>
@@ -117,7 +117,7 @@ function TeamRow({
               }}
             />
             <div>
-              <div className="font-semibold text-white">{teamName}</div>
+              <div className="font-semibold text-gray-900 dark:text-white">{teamName}</div>
               <div className="text-xs text-gray-500">{team.TeamAbbreviation}</div>
             </div>
           </div>
@@ -129,9 +129,9 @@ function TeamRow({
             {netRtg}
           </span>
         </td>
-        <td className="px-4 py-3 text-center text-sm text-gray-300">{offRtg}</td>
-        <td className="px-4 py-3 text-center text-sm text-gray-300">{defRtg}</td>
-        <td className="px-4 py-3 text-center text-sm text-gray-400">
+        <td className="px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-300">{offRtg}</td>
+        <td className="px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-300">{defRtg}</td>
+        <td className="px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
           {round(team.Pace)}
         </td>
         <td className="px-4 py-3 text-center text-sm text-gray-400">{fg3Pct}</td>
@@ -142,7 +142,7 @@ function TeamRow({
             {signed(team.PlusMinus)}
           </span>
         </td>
-        <td className="px-4 py-3 text-center text-xs text-gray-600">
+        <td className="px-4 py-3 text-center text-xs text-gray-400 dark:text-gray-600">
           <svg
             className={`mx-auto h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
             fill="none"
@@ -160,7 +160,7 @@ function TeamRow({
       </tr>
 
       {expanded && (
-        <tr className="border-b border-gray-800/40 bg-gray-900/50">
+        <tr className="border-b border-gray-100 bg-gray-50 dark:border-gray-800/40 dark:bg-gray-900/50">
           <td colSpan={9} className="px-4 py-4">
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
               <StatBadge label={t("assists")} value={String(team.Assists)} />
@@ -327,7 +327,7 @@ export default function TeamsView() {
         {Array.from({ length: 10 }, (_, i) => (
           <div
             key={i}
-            className="h-14 animate-pulse rounded-lg bg-gray-800/40"
+            className="h-14 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800/40"
           />
         ))}
       </div>
@@ -336,7 +336,7 @@ export default function TeamsView() {
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
+      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-gray-700/50 dark:bg-gray-900">
         {t("errorLoadingTeams")}
       </div>
     );
@@ -345,17 +345,17 @@ export default function TeamsView() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">{t("teamsPageTitle")}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("teamsPageTitle")}</h1>
         <p className="mt-0.5 text-sm text-gray-500">
           {t("teamsSeason")}
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-700/50 bg-gray-900">
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700/50 dark:bg-gray-900">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-800/60">
+              <tr className="border-b border-gray-200 dark:border-gray-800/60">
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                   #
                 </th>
