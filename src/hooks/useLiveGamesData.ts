@@ -37,15 +37,18 @@ function parseGame(g: PbpGame, hasLiveGames: boolean): ParsedLiveGame {
   const home = parseTeamField(g.home);
   const away = parseTeamField(g.away);
   const hasStarted = home.score > 0 || away.score > 0;
-  const isFinal =
-    g.time.toLowerCase() === "final" ||
-    g.time.toLowerCase().startsWith("final");
-  const isLive = hasStarted && !isFinal && hasLiveGames;
-  const isPregame = !hasStarted && !isFinal;
+  // Use .trim() to handle trailing whitespace in API responses (e.g. "Final               ")
+  const isFinal = g.time.trim().toLowerCase().startsWith("final");
+  // Pregame times look like "6:00 pm ET" — detect by presence of am/pm
+  const isScheduled = /\d:\d{2}\s*(am|pm)/i.test(g.time);
+  // A game is live if pbpstats reports live games AND it hasn't ended AND isn't scheduled
+  // Note: using !isScheduled (not hasStarted) so 0-0 tip-off games are correctly shown as live
+  const isLive = hasLiveGames && !isFinal && !isScheduled;
+  const isPregame = !hasStarted && !isFinal && !isLive;
 
   return {
     gameId: g.gameid,
-    time: g.time,
+    time: g.time.trim(),
     homeAbbr: home.abbr,
     homeScore: home.score,
     awayAbbr: away.abbr,
@@ -60,6 +63,7 @@ function parseGame(g: PbpGame, hasLiveGames: boolean): ParsedLiveGame {
 
 async function fetchLiveGames(): Promise<ParsedLiveGame[]> {
   const res = await fetch("https://api.pbpstats.com/live/games/nba");
+  if (!res.ok) throw new Error(`PBPStats API error: ${res.status}`);
   const data: PbpGamesResponse = await res.json();
   if (!data.game_data?.length) return [];
   return data.game_data.map((g) => parseGame(g, data.live_games > 0));
