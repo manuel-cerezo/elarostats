@@ -1,62 +1,11 @@
 import { useEffect, useState } from "react";
 import teamsData from "../data/teams.json";
-
-// --- Types ---
-
-interface PbpGame {
-  gameid: string;
-  time: string;
-  home: string; // e.g. "PHX 41"
-  away: string; // e.g. "ORL 51"
-}
-
-interface PbpGamesResponse {
-  live_games: number;
-  game_data: PbpGame[];
-}
-
-interface ParsedGame {
-  gameId: string;
-  time: string;
-  homeAbbr: string;
-  homeScore: number;
-  awayAbbr: string;
-  awayScore: number;
-  isLive: boolean;
-  isFinal: boolean;
-  isPregame: boolean;
-}
+import { useLiveGamesData } from "../hooks/useLiveGamesData";
+import type { ParsedLiveGame } from "../hooks/useLiveGamesData";
 
 // --- Helpers ---
 
 const teamByAbbr = new Map(teamsData.map((t) => [t.abbreviation, t]));
-
-function parseTeamField(field: string): { abbr: string; score: number } {
-  const parts = field.trim().split(" ");
-  return { abbr: parts[0] ?? "", score: parseInt(parts[1] ?? "0", 10) };
-}
-
-function parseGame(g: PbpGame, hasLiveGames: boolean): ParsedGame {
-  const home = parseTeamField(g.home);
-  const away = parseTeamField(g.away);
-  const hasStarted = home.score > 0 || away.score > 0;
-  const isFinal =
-    g.time.toLowerCase() === "final" || g.time.toLowerCase().startsWith("final");
-  const isLive = hasStarted && !isFinal && hasLiveGames;
-  const isPregame = !hasStarted && !isFinal;
-
-  return {
-    gameId: g.gameid,
-    time: g.time,
-    homeAbbr: home.abbr,
-    homeScore: home.score,
-    awayAbbr: away.abbr,
-    awayScore: away.score,
-    isLive,
-    isFinal,
-    isPregame,
-  };
-}
 
 // --- Components ---
 
@@ -107,7 +56,7 @@ function TeamRow({
   );
 }
 
-function GameCard({ game }: { game: ParsedGame }) {
+function GameCard({ game }: { game: ParsedLiveGame }) {
   const showScore = !game.isPregame;
   const tied = game.homeScore === game.awayScore;
   const homeIsWinning = game.isPregame || tied || game.homeScore > game.awayScore;
@@ -161,9 +110,6 @@ function GameCard({ game }: { game: ParsedGame }) {
 // --- Main ---
 
 export default function LiveScores() {
-  const [games, setGames] = useState<ParsedGame[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [hidden, setHidden] = useState(false);
 
   // Hide on /games page to avoid redundancy with the full games view
@@ -176,35 +122,12 @@ export default function LiveScores() {
     return () => document.removeEventListener("astro:page-load", checkPath);
   }, []);
 
-  useEffect(() => {
-    async function fetchScores() {
-      try {
-        const res = await fetch("https://api.pbpstats.com/live/games/nba");
-        const data: PbpGamesResponse = await res.json();
-        if (!data.game_data?.length) {
-          setGames([]);
-          setError(false);
-          setLoading(false);
-          return;
-        }
-        const parsed = data.game_data.map((g) => parseGame(g, data.live_games > 0));
-        setGames(parsed);
-        setError(false);
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchScores();
-    const interval = setInterval(fetchScores, 30_000);
-    return () => clearInterval(interval);
-  }, []);
+  // Shared hook: pauses fetching & polling when hidden
+  const { data: games, isLoading, isError } = useLiveGamesData(!hidden);
 
   if (hidden) return null;
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="w-full border-b border-gray-800/60 bg-gray-950 px-4 py-3">
         <div className="flex gap-3">
@@ -219,7 +142,7 @@ export default function LiveScores() {
     );
   }
 
-  if (error || games.length === 0) return null;
+  if (isError || !games || games.length === 0) return null;
 
   const today = new Date().toLocaleDateString("es-ES", {
     weekday: "short",

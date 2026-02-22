@@ -1,22 +1,14 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import teamsData from "../data/teams.json";
 import { useTranslation } from "../hooks/useTranslation";
+import {
+  useLiveGamesData,
+  type ParsedLiveGame,
+} from "../hooks/useLiveGamesData";
 
 const PBPSTATS_BASE = "https://api.pbpstats.com";
 
-// --- Types ---
-
-interface PbpGame {
-  gameid: string;
-  time: string;
-  home: string; // e.g. "PHX 41"
-  away: string; // e.g. "ORL 51"
-}
-
-interface PbpGamesResponse {
-  live_games: number;
-  game_data: PbpGame[];
-}
+// --- Types (game detail) ---
 
 interface GameInfo {
   home_score: number;
@@ -44,28 +36,10 @@ interface GameDetail {
   status: string;
 }
 
-interface ParsedGame {
-  gameId: string;
-  time: string;
-  homeAbbr: string;
-  homeScore: number;
-  awayAbbr: string;
-  awayScore: number;
-  isLive: boolean;
-  isFinal: boolean;
-  detail?: GameDetail;
-  detailLoading?: boolean;
-}
-
 // --- Helpers ---
 
 const abbrToTeamId = new Map(teamsData.map((t) => [t.abbreviation, t.teamId]));
 const teamByAbbr = new Map(teamsData.map((t) => [t.abbreviation, t]));
-
-function parseTeamField(field: string): { abbr: string; score: number } {
-  const parts = field.trim().split(" ");
-  return { abbr: parts[0] ?? "", score: parseInt(parts[1] ?? "0", 10) };
-}
 
 function getStatValue(
   rows: TeamStatRow[],
@@ -99,6 +73,24 @@ function formatStatValue(value: string | number | undefined): string {
   return String(value);
 }
 
+// --- Detail hook (per-game) ---
+
+const DETAIL_REFETCH = 30_000;
+
+function useGameDetail(gameId: string, enabled: boolean) {
+  return useQuery<GameDetail | null>({
+    queryKey: ["game-detail", gameId],
+    queryFn: async () => {
+      const res = await fetch(`${PBPSTATS_BASE}/live/game/${gameId}/team`);
+      if (!res.ok) return null;
+      return (await res.json()) as GameDetail;
+    },
+    staleTime: DETAIL_REFETCH,
+    refetchInterval: enabled ? DETAIL_REFETCH : false,
+    enabled,
+  });
+}
+
 // --- Components ---
 
 function StatRow({ label, home, away }: { label: string; home: string; away: string }) {
@@ -111,7 +103,7 @@ function StatRow({ label, home, away }: { label: string; home: string; away: str
   );
 }
 
-function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTranslation>["t"] }) {
+function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useTranslation>["t"] }) {
   const hasStarted = game.homeScore > 0 || game.awayScore > 0;
   const homeWins = hasStarted && game.homeScore > game.awayScore;
   const awayWins = hasStarted && game.awayScore > game.homeScore;
@@ -121,9 +113,14 @@ function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTrans
   const homeId = abbrToTeamId.get(game.homeAbbr);
   const awayId = abbrToTeamId.get(game.awayAbbr);
 
-  const detail = game.detail?.game_data;
-  const rows = detail?.rows ?? [];
-  const gameInfo = detail?.game_info;
+  // Fetch detail only for started games
+  const { data: detail, isLoading: detailLoading } = useGameDetail(
+    game.gameId,
+    hasStarted,
+  );
+
+  const rows = detail?.game_data?.rows ?? [];
+  const gameInfo = detail?.game_data?.game_info;
 
   return (
     <div
@@ -160,8 +157,9 @@ function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTrans
       <div className="px-4 py-4">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4">
           {/* Away team */}
-          <div
-            className={`flex items-center justify-end gap-3 ${hasStarted && !awayWins ? "opacity-50" : ""}`}
+          <a
+            href={awayId ? `/teams/${awayId}` : "#"}
+            className={`flex items-center justify-end gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-800/40 ${hasStarted && !awayWins ? "opacity-50" : ""}`}
           >
             <div className="text-right">
               <div className={`font-semibold ${awayWins ? "text-white" : "text-gray-300"}`}>
@@ -179,7 +177,7 @@ function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTrans
                 }}
               />
             )}
-          </div>
+          </a>
 
           {/* Score */}
           {hasStarted ? (
@@ -195,8 +193,9 @@ function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTrans
           )}
 
           {/* Home team */}
-          <div
-            className={`flex items-center justify-start gap-3 ${hasStarted && !homeWins ? "opacity-50" : ""}`}
+          <a
+            href={homeId ? `/teams/${homeId}` : "#"}
+            className={`flex items-center justify-start gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-800/40 ${hasStarted && !homeWins ? "opacity-50" : ""}`}
           >
             {homeId && (
               <img
@@ -214,7 +213,7 @@ function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTrans
               </div>
               <div className="text-xs text-gray-500">{t("home")}</div>
             </div>
-          </div>
+          </a>
         </div>
       </div>
 
@@ -243,7 +242,7 @@ function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTrans
       )}
 
       {/* Loading skeleton for stats */}
-      {hasStarted && rows.length === 0 && game.detailLoading && (
+      {hasStarted && rows.length === 0 && detailLoading && (
         <div className="border-t border-gray-800/40 px-4 py-3">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-gray-600">
             {t("teamStats")}
@@ -267,85 +266,11 @@ function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTrans
 
 export default function GamesView() {
   const { t, locale } = useTranslation();
-  const [games, setGames] = useState<ParsedGame[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    async function fetchGames() {
-      try {
-        // 1. Fetch game list
-        const listRes = await fetch(`${PBPSTATS_BASE}/live/games/nba`);
-        if (!listRes.ok) throw new Error("Failed to fetch games list");
-        const listData: PbpGamesResponse = await listRes.json();
+  // Shared hook — same cache key as LiveScores, no duplicate requests
+  const { data: games, isLoading, isError } = useLiveGamesData();
 
-        // Parse basic game data
-        const parsed: ParsedGame[] = listData.game_data.map((g) => {
-          const home = parseTeamField(g.home);
-          const away = parseTeamField(g.away);
-          const hasStarted = home.score > 0 || away.score > 0;
-          const isFinal =
-            g.time.toLowerCase() === "final" || g.time.toLowerCase().startsWith("final");
-          const isLive = hasStarted && !isFinal;
-          return {
-            gameId: g.gameid,
-            time: g.time,
-            homeAbbr: home.abbr,
-            homeScore: home.score,
-            awayAbbr: away.abbr,
-            awayScore: away.score,
-            isLive,
-            isFinal,
-          };
-        });
-
-        // Show games immediately with detailLoading flag for started games
-        const startedGames = parsed.filter((g) => g.isLive || g.isFinal);
-        const withLoadingFlag = parsed.map((g) => ({
-          ...g,
-          detailLoading: g.isLive || g.isFinal,
-        }));
-        setGames(withLoadingFlag);
-        setError(false);
-
-        // 2. Fetch details for started games (live or final)
-        const details = await Promise.allSettled(
-          startedGames.map(async (g) => {
-            const res = await fetch(`${PBPSTATS_BASE}/live/game/${g.gameId}/team`);
-            if (!res.ok) return null;
-            return { gameId: g.gameId, detail: (await res.json()) as GameDetail };
-          }),
-        );
-
-        // Merge details into games
-        const detailMap = new Map<string, GameDetail>();
-        details.forEach((result) => {
-          if (result.status === "fulfilled" && result.value) {
-            detailMap.set(result.value.gameId, result.value.detail);
-          }
-        });
-
-        const enriched = parsed.map((g) => ({
-          ...g,
-          detail: detailMap.get(g.gameId),
-          detailLoading: false,
-        }));
-
-        setGames(enriched);
-        setError(false);
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchGames();
-    const interval = setInterval(fetchGames, 30_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
@@ -355,7 +280,7 @@ export default function GamesView() {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
         {t("errorLoadingGames")}
@@ -363,7 +288,7 @@ export default function GamesView() {
     );
   }
 
-  if (games.length === 0) {
+  if (!games || games.length === 0) {
     return (
       <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
         {t("noGamesToday")}
@@ -379,7 +304,7 @@ export default function GamesView() {
   });
 
   const liveGames = games.filter((g) => g.isLive);
-  const pregameGames = games.filter((g) => !g.isLive && !g.isFinal);
+  const pregameGames = games.filter((g) => g.isPregame);
   const finalGames = games.filter((g) => g.isFinal);
 
   return (
