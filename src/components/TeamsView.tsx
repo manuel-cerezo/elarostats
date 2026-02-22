@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import teamsData from "../data/teams.json";
 import { useTranslation } from "../hooks/useTranslation";
+import { supabase } from "../lib/supabase";
 
 interface PbpTeam {
   EntityId: number;
@@ -198,12 +199,46 @@ export default function TeamsView() {
   useEffect(() => {
     async function fetchTeams() {
       try {
-        const res = await fetch(
-          "https://api.pbpstats.com/get-totals/nba?Season=2025-26&SeasonType=Regular+Season&Type=Team",
+        if (!supabase) throw new Error("Supabase not configured");
+        const { data, error: sbError } = await supabase
+          .from("pbp_team_totals")
+          .select(
+            "entity_id, name, team_abbreviation, games_played, points, plus_minus, off_poss, def_poss, fg2m, fg2a, fg3m, fg3a, at_rim_fgm, at_rim_fga, assists, rebounds, steals, blocks, turnovers, efg_pct, ts_pct, opponent_points, raw_data",
+          )
+          .eq("season", "2025-26")
+          .eq("season_type", "Regular Season");
+        if (sbError || !data?.length) throw new Error("No data");
+        setTeams(
+          data.map((r) => {
+            const raw = (r.raw_data ?? {}) as Record<string, unknown>;
+            return {
+              EntityId: r.entity_id,
+              TeamId: r.entity_id,
+              Name: r.name,
+              TeamAbbreviation: r.team_abbreviation ?? "",
+              GamesPlayed: r.games_played ?? 0,
+              PlusMinus: r.plus_minus ?? 0,
+              Points: r.points ?? 0,
+              OpponentPoints: r.opponent_points ?? 0,
+              Pace: Number(raw.Pace) || 0,
+              OffPoss: r.off_poss ?? 0,
+              DefPoss: r.def_poss ?? 0,
+              Assists: r.assists ?? 0,
+              Rebounds: r.rebounds ?? 0,
+              Steals: r.steals ?? 0,
+              Blocks: r.blocks ?? 0,
+              Turnovers: r.turnovers ?? 0,
+              FG3M: r.fg3m ?? 0,
+              FG3A: r.fg3a ?? 0,
+              FG2M: r.fg2m ?? 0,
+              FG2A: r.fg2a ?? 0,
+              AtRimFGM: r.at_rim_fgm ?? 0,
+              AtRimFGA: r.at_rim_fga ?? 0,
+              EfgPct: r.efg_pct != null ? Number(r.efg_pct) : undefined,
+              TsPct: r.ts_pct != null ? Number(r.ts_pct) : undefined,
+            };
+          }),
         );
-        const data: PbpResponse = await res.json();
-        if (!data.multi_row_table_data?.length) throw new Error("No data");
-        setTeams(data.multi_row_table_data);
         setError(false);
       } catch {
         setError(true);
@@ -355,7 +390,7 @@ export default function TeamsView() {
       </div>
 
       <p className="mt-4 text-xs text-gray-700">
-        Fuente: pbpstats.com · Datos actualizados en tiempo real
+        Fuente: pbpstats.com · Datos actualizados diariamente
       </p>
     </div>
   );

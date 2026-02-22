@@ -14,7 +14,8 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "sync": "node --import tsx/esm scripts/sync-players.ts",
-    "sync:year": "node --import tsx/esm scripts/sync-players.ts"
+    "sync:year": "node --import tsx/esm scripts/sync-players.ts",
+    "sync:pbpstats": "node --import tsx/esm scripts/sync-pbpstats.ts"
   },
   "dependencies": {
     "@astrojs/react": "^4.2.0",

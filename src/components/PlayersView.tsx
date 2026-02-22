@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import teamsData from "../data/teams.json";
 import { useTranslation } from "../hooks/useTranslation";
+import { supabase } from "../lib/supabase";
 
 // --- Types ---
 
@@ -26,10 +27,6 @@ interface PbpPlayer {
   EfgPct?: number;
   TsPct?: number;
   [key: string]: unknown;
-}
-
-interface PbpResponse {
-  multi_row_table_data: PbpPlayer[];
 }
 
 // --- Helpers ---
@@ -194,12 +191,39 @@ export default function PlayersView() {
   useEffect(() => {
     async function fetchPlayers() {
       try {
-        const res = await fetch(
-          "https://api.pbpstats.com/get-totals/nba?Season=2025-26&SeasonType=Regular+Season&Type=Player",
+        if (!supabase) throw new Error("Supabase not configured");
+        const { data, error: sbError } = await supabase
+          .from("pbp_player_totals")
+          .select(
+            "entity_id, name, team_id, team_abbreviation, games_played, minutes, points, assists, rebounds, steals, blocks, turnovers, fg2m, fg2a, fg3m, fg3a, ft_points, plus_minus, efg_pct, ts_pct",
+          )
+          .eq("season", "2025-26")
+          .eq("season_type", "Regular Season");
+        if (sbError || !data?.length) throw new Error("No data");
+        setPlayers(
+          data.map((r) => ({
+            EntityId: r.entity_id,
+            Name: r.name,
+            TeamId: r.team_id,
+            TeamAbbreviation: r.team_abbreviation ?? "",
+            GamesPlayed: r.games_played ?? 0,
+            Minutes: Number(r.minutes) || 0,
+            Points: r.points ?? 0,
+            Assists: r.assists ?? 0,
+            Rebounds: r.rebounds ?? 0,
+            Steals: r.steals ?? 0,
+            Blocks: r.blocks ?? 0,
+            Turnovers: r.turnovers ?? 0,
+            FG2M: r.fg2m ?? 0,
+            FG2A: r.fg2a ?? 0,
+            FG3M: r.fg3m ?? 0,
+            FG3A: r.fg3a ?? 0,
+            FtPoints: r.ft_points ?? 0,
+            PlusMinus: r.plus_minus ?? 0,
+            EfgPct: r.efg_pct != null ? Number(r.efg_pct) : undefined,
+            TsPct: r.ts_pct != null ? Number(r.ts_pct) : undefined,
+          })),
         );
-        const data: PbpResponse = await res.json();
-        if (!data.multi_row_table_data?.length) throw new Error("No data");
-        setPlayers(data.multi_row_table_data);
         setError(false);
       } catch {
         setError(true);
