@@ -114,7 +114,8 @@ function GameCard({ game }: { game: ParsedGame }) {
   const awayIsWinning = game.isPregame || tied || game.awayScore > game.homeScore;
 
   return (
-    <div
+    <a
+      href="/games"
       className={`flex min-w-[215px] flex-col gap-2.5 rounded-xl border p-3 shadow-sm transition-colors hover:border-orange-500/40 ${
         game.isLive
           ? "border-red-500/30 bg-[#111827]"
@@ -153,7 +154,7 @@ function GameCard({ game }: { game: ParsedGame }) {
         isWinning={homeIsWinning}
         showScore={showScore}
       />
-    </div>
+    </a>
   );
 }
 
