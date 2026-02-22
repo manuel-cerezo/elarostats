@@ -15,9 +15,31 @@ export async function getStaticPaths() {
 
 const { team } = Astro.props;
 const teamLogoUrl = getTeamLogoUrl(team.teamId);
+
+const description = `Plantilla y estadísticas avanzadas de ${team.teamName}. Roster completo con DPM, RAPM y métricas de rendimiento de cada jugador.`;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SportsTeam",
+  name: team.teamName,
+  sport: "Basketball",
+  memberOf: {
+    "@type": "SportsOrganization",
+    name: "NBA",
+  },
+  url: `https://elarostats.vercel.app/teams/${team.teamId}`,
+  logo: teamLogoUrl
+    ? `https://elarostats.vercel.app${teamLogoUrl}`
+    : undefined,
+};
 ---
 
-<Layout title={`${team.teamName} — elarostats`}>
+<Layout
+  title={`${team.teamName} — elarostats`}
+  description={description}
+  ogImage={teamLogoUrl}
+  jsonLd={jsonLd}
+>
   <main class="mx-auto max-w-3xl px-4 py-12">
     <div class="flex items-center gap-6">
       {

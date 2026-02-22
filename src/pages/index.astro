@@ -3,9 +3,27 @@ import Layout from "../layouts/Layout.astro";
 import HeroWithQuery from "../components/HeroWithQuery";
 import TeamsGridWithQuery from "../components/TeamsGridWithQuery";
 import "../styles/global.css";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "elarostats",
+  url: "https://elarostats.vercel.app",
+  description:
+    "Estadísticas avanzadas de la NBA: DPM, RAPM, resultados en vivo, plantillas de equipos y más.",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: "https://elarostats.vercel.app/players?q={search_term_string}",
+    "query-input": "required name=search_term_string",
+  },
+};
 ---
 
-<Layout title="elarostats — NBA Stats & Analytics">
+<Layout
+  title="elarostats — NBA Stats & Analytics"
+  description="Estadísticas avanzadas de la NBA: DPM, RAPM, resultados en vivo, plantillas de equipos y más. Tu fuente de analítica NBA."
+  jsonLd={jsonLd}
+>
   <main class="relative flex flex-col items-center gap-12 px-4 pb-16">
     <HeroWithQuery client:only="react" />
     <TeamsGridWithQuery client:only="react" />

@@ -1,9 +1,22 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import GamesViewWithQuery from "../../components/GamesViewWithQuery";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "Partidos NBA en vivo",
+  description: "Resultados en vivo y programación de partidos de la NBA. Marcadores actualizados en tiempo real.",
+  url: "https://elarostats.vercel.app/games",
+  isPartOf: { "@type": "WebSite", name: "elarostats" },
+};
 ---
 
-<Layout title="Partidos — elarostats">
+<Layout
+  title="Partidos NBA en vivo — elarostats"
+  description="Resultados en vivo y programación de partidos de la NBA. Marcadores actualizados en tiempo real con estadísticas detalladas."
+  jsonLd={jsonLd}
+>
   <main class="mx-auto max-w-3xl px-4 py-8">
     <GamesViewWithQuery client:only="react" />
   </main>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://elarostats.vercel.app/sitemap-index.xml
