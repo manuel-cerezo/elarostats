@@ -54,6 +54,7 @@ interface ParsedGame {
   isLive: boolean;
   isFinal: boolean;
   detail?: GameDetail;
+  detailLoading?: boolean;
 }
 
 // --- Helpers ---
@@ -240,6 +241,24 @@ function GameCard({ game, t }: { game: ParsedGame; t: ReturnType<typeof useTrans
           </div>
         </div>
       )}
+
+      {/* Loading skeleton for stats */}
+      {hasStarted && rows.length === 0 && game.detailLoading && (
+        <div className="border-t border-gray-800/40 px-4 py-3">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-gray-600">
+            {t("teamStats")}
+          </p>
+          <div className="space-y-2">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 py-1">
+                <div className="ml-auto h-3.5 w-10 animate-pulse rounded bg-gray-800/60" />
+                <div className="h-3 w-20 animate-pulse rounded bg-gray-800/40" />
+                <div className="h-3.5 w-10 animate-pulse rounded bg-gray-800/60" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -280,8 +299,16 @@ export default function GamesView() {
           };
         });
 
-        // 2. Fetch details for started games (live or final)
+        // Show games immediately with detailLoading flag for started games
         const startedGames = parsed.filter((g) => g.isLive || g.isFinal);
+        const withLoadingFlag = parsed.map((g) => ({
+          ...g,
+          detailLoading: g.isLive || g.isFinal,
+        }));
+        setGames(withLoadingFlag);
+        setError(false);
+
+        // 2. Fetch details for started games (live or final)
         const details = await Promise.allSettled(
           startedGames.map(async (g) => {
             const res = await fetch(`${PBPSTATS_BASE}/live/game/${g.gameId}/team`);
@@ -301,6 +328,7 @@ export default function GamesView() {
         const enriched = parsed.map((g) => ({
           ...g,
           detail: detailMap.get(g.gameId),
+          detailLoading: false,
         }));
 
         setGames(enriched);

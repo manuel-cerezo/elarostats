@@ -164,6 +164,17 @@ export default function LiveScores() {
   const [games, setGames] = useState<ParsedGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [hidden, setHidden] = useState(false);
+
+  // Hide on /games page to avoid redundancy with the full games view
+  useEffect(() => {
+    function checkPath() {
+      setHidden(window.location.pathname.startsWith("/games"));
+    }
+    checkPath();
+    document.addEventListener("astro:page-load", checkPath);
+    return () => document.removeEventListener("astro:page-load", checkPath);
+  }, []);
 
   useEffect(() => {
     async function fetchScores() {
@@ -190,6 +201,8 @@ export default function LiveScores() {
     const interval = setInterval(fetchScores, 30_000);
     return () => clearInterval(interval);
   }, []);
+
+  if (hidden) return null;
 
   if (loading) {
     return (

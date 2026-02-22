@@ -148,7 +148,11 @@ function PlayerRow({
         </div>
       </td>
       <td className="whitespace-nowrap px-3 py-2.5">
-        <div className="flex items-center gap-1.5">
+        <a
+          href={`/teams/${player.TeamId}`}
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-gray-800/60"
+        >
           <img
             src={teamLogoUrl}
             alt={player.TeamAbbreviation}
@@ -157,10 +161,10 @@ function PlayerRow({
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
           />
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-400 hover:text-orange-400">
             {localTeam?.abbreviation ?? player.TeamAbbreviation}
           </span>
-        </div>
+        </a>
       </td>
       <td className="px-3 py-2.5 text-center text-sm font-semibold text-orange-400">{ppg}</td>
       <td className="px-3 py-2.5 text-center text-sm text-gray-300">{rpg}</td>
