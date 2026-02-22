@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import teamsData from "../data/teams.json";
 import { useTranslation } from "../hooks/useTranslation";
 import { supabase } from "../lib/supabase";
@@ -203,6 +203,28 @@ export default function PlayersView() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Infinite scroll
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  const sentinelRef = useCallback(
+    (node: HTMLTableRowElement | null) => {
+      if (observerRef.current) observerRef.current.disconnect();
+      if (!node) return;
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) {
+            setVisibleCount((prev) => prev + PAGE_SIZE);
+          }
+        },
+        { rootMargin: "200px" },
+      );
+      observerRef.current.observe(node);
+    },
+    [],
+  );
+
   useEffect(() => {
     async function fetchPlayers() {
       try {
@@ -257,6 +279,7 @@ export default function PlayersView() {
       setSortKey(key);
       setSortDir("desc");
     }
+    setVisibleCount(PAGE_SIZE);
   }
 
   const filteredPlayers = players.filter((p) => {
@@ -347,7 +370,10 @@ export default function PlayersView() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setVisibleCount(PAGE_SIZE);
+            }}
             placeholder={t("searchPlayerPlaceholder")}
             className="w-full rounded-lg border border-gray-700 bg-gray-800/60 px-4 py-2 pl-10 text-sm text-white placeholder-gray-500 outline-none focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/30"
           />
@@ -392,13 +418,24 @@ export default function PlayersView() {
                   </td>
                 </tr>
               ) : (
-                sortedPlayers.map((player, index) => (
-                  <PlayerRow
-                    key={player.EntityId}
-                    player={player}
-                    rank={index + 1}
-                  />
-                ))
+                <>
+                  {sortedPlayers.slice(0, visibleCount).map((player, index) => (
+                    <PlayerRow
+                      key={player.EntityId}
+                      player={player}
+                      rank={index + 1}
+                    />
+                  ))}
+                  {visibleCount < sortedPlayers.length && (
+                    <tr ref={sentinelRef}>
+                      <td colSpan={13} className="py-4 text-center">
+                        <span className="text-xs text-gray-600">
+                          {visibleCount} / {sortedPlayers.length}
+                        </span>
+                      </td>
+                    </tr>
+                  )}
+                </>
               )}
             </tbody>
           </table>
