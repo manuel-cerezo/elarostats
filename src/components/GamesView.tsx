@@ -96,9 +96,9 @@ function useGameDetail(gameId: string, enabled: boolean) {
 function StatRow({ label, home, away }: { label: string; home: string; away: string }) {
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 py-1">
-      <span className="text-right text-sm tabular-nums text-gray-300">{away}</span>
+      <span className="text-right text-sm tabular-nums text-gray-600 dark:text-gray-300">{away}</span>
       <span className="min-w-[120px] text-center text-xs text-gray-500">{label}</span>
-      <span className="text-left text-sm tabular-nums text-gray-300">{home}</span>
+      <span className="text-left text-sm tabular-nums text-gray-600 dark:text-gray-300">{home}</span>
     </div>
   );
 }
@@ -125,11 +125,13 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
   return (
     <div
       className={`overflow-hidden rounded-2xl border shadow-sm ${
-        game.isLive ? "border-red-500/20 bg-gray-900" : "border-gray-700/50 bg-gray-900"
+        game.isLive
+          ? "border-red-500/20 bg-white dark:bg-gray-900"
+          : "border-gray-200 bg-white dark:border-gray-700/50 dark:bg-gray-900"
       }`}
     >
       {/* Header with status */}
-      <div className="flex items-center justify-between border-b border-gray-800/60 px-4 py-2.5">
+      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 dark:border-gray-800/60">
         <div className="flex items-center gap-2">
           {game.isLive && (
             <span className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-semibold text-red-400">
@@ -138,7 +140,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
             </span>
           )}
           {game.isFinal && (
-            <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-gray-400">
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-gray-400">
               Final
             </span>
           )}
@@ -159,10 +161,10 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           {/* Away team */}
           <a
             href={awayId ? `/teams/${awayId}` : "#"}
-            className={`flex items-center justify-end gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-800/40 ${hasStarted && !awayWins ? "opacity-50" : ""}`}
+            className={`flex items-center justify-end gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${hasStarted && !awayWins ? "opacity-50" : ""}`}
           >
             <div className="text-right">
-              <div className={`font-semibold ${awayWins ? "text-white" : "text-gray-300"}`}>
+              <div className={`font-semibold ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-300"}`}>
                 {awayTeam?.teamName ?? game.awayAbbr}
               </div>
               <div className="text-xs text-gray-500">{t("away")}</div>
@@ -182,9 +184,9 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           {/* Score */}
           {hasStarted ? (
             <div className="text-center">
-              <span className="text-3xl font-bold tabular-nums text-white">
+              <span className="text-3xl font-bold tabular-nums text-gray-900 dark:text-white">
                 {game.awayScore}
-                <span className="mx-2 text-lg text-gray-600">–</span>
+                <span className="mx-2 text-lg text-gray-400 dark:text-gray-600">–</span>
                 {game.homeScore}
               </span>
             </div>
@@ -195,7 +197,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           {/* Home team */}
           <a
             href={homeId ? `/teams/${homeId}` : "#"}
-            className={`flex items-center justify-start gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-800/40 ${hasStarted && !homeWins ? "opacity-50" : ""}`}
+            className={`flex items-center justify-start gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${hasStarted && !homeWins ? "opacity-50" : ""}`}
           >
             {homeId && (
               <img
@@ -208,7 +210,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
               />
             )}
             <div>
-              <div className={`font-semibold ${homeWins ? "text-white" : "text-gray-300"}`}>
+              <div className={`font-semibold ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-300"}`}>
                 {homeTeam?.teamName ?? game.homeAbbr}
               </div>
               <div className="text-xs text-gray-500">{t("home")}</div>
@@ -219,11 +221,11 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
 
       {/* Team stats comparison */}
       {hasStarted && rows.length > 0 && (
-        <div className="border-t border-gray-800/40 px-4 py-3">
-          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-gray-600">
+        <div className="border-t border-gray-100 px-4 py-3 dark:border-gray-800/40">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-600">
             {t("teamStats")}
           </p>
-          <div className="divide-y divide-gray-800/30">
+          <div className="divide-y divide-gray-100 dark:divide-gray-800/30">
             {DISPLAY_STATS.map((statName) => {
               const home = getStatValue(rows, statName, "home");
               const away = getStatValue(rows, statName, "visitor");
@@ -243,16 +245,16 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
 
       {/* Loading skeleton for stats */}
       {hasStarted && rows.length === 0 && detailLoading && (
-        <div className="border-t border-gray-800/40 px-4 py-3">
-          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-gray-600">
+        <div className="border-t border-gray-100 px-4 py-3 dark:border-gray-800/40">
+          <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-600">
             {t("teamStats")}
           </p>
           <div className="space-y-2">
             {Array.from({ length: 6 }, (_, i) => (
               <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 py-1">
-                <div className="ml-auto h-3.5 w-10 animate-pulse rounded bg-gray-800/60" />
-                <div className="h-3 w-20 animate-pulse rounded bg-gray-800/40" />
-                <div className="h-3.5 w-10 animate-pulse rounded bg-gray-800/60" />
+                <div className="ml-auto h-3.5 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-800/60" />
+                <div className="h-3 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-800/40" />
+                <div className="h-3.5 w-10 animate-pulse rounded bg-gray-200 dark:bg-gray-800/60" />
               </div>
             ))}
           </div>
@@ -274,7 +276,7 @@ export default function GamesView() {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-40 animate-pulse rounded-2xl bg-gray-800/40" />
+          <div key={i} className="h-40 animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-800/40" />
         ))}
       </div>
     );
@@ -282,7 +284,7 @@ export default function GamesView() {
 
   if (isError) {
     return (
-      <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
+      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-gray-700/50 dark:bg-gray-900">
         {t("errorLoadingGames")}
       </div>
     );
@@ -290,7 +292,7 @@ export default function GamesView() {
 
   if (!games || games.length === 0) {
     return (
-      <div className="rounded-2xl border border-gray-700/50 bg-gray-900 p-8 text-center text-gray-500">
+      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-gray-700/50 dark:bg-gray-900">
         {t("noGamesToday")}
       </div>
     );
@@ -311,7 +313,7 @@ export default function GamesView() {
     <div>
       <div className="mb-6 flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t("gamesPageTitle")}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("gamesPageTitle")}</h1>
           <p className="mt-0.5 text-sm capitalize text-gray-500">{today}</p>
         </div>
       </div>
