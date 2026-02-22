@@ -134,7 +134,18 @@ function PlayerRow({
     >
       <td className="px-3 py-2.5 text-sm font-medium text-gray-600">{rank}</td>
       <td className="whitespace-nowrap px-3 py-2.5">
-        <span className="font-semibold text-white">{player.Name}</span>
+        <div className="flex items-center gap-2">
+          <img
+            src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${player.EntityId}.png`}
+            alt={player.Name}
+            className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
+            loading="lazy"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+          <span className="font-semibold text-white">{player.Name}</span>
+        </div>
       </td>
       <td className="whitespace-nowrap px-3 py-2.5">
         <div className="flex items-center gap-1.5">
