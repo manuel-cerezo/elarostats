@@ -52,7 +52,8 @@ const { title } = Astro.props;
         <a href="/" class="text-lg font-extrabold tracking-tight">
           elaro<span class="text-orange-500">stats</span>
         </a>
-        <nav id="main-nav" class="flex items-center gap-1">
+        <!-- Desktop nav (hidden on mobile) -->
+        <nav id="main-nav" class="hidden items-center gap-1 sm:flex">
           <a
             href="/"
             data-nav-exact="true"
@@ -85,13 +86,60 @@ const { title } = Astro.props;
           </div>
           <ThemeToggleWithQuery client:only="react" />
           <LanguageSelectorWithQuery client:only="react" />
+          <!-- Hamburger button (visible only on mobile) -->
+          <button
+            id="mobile-menu-btn"
+            class="inline-flex items-center justify-center rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white sm:hidden"
+            aria-label="Abrir menú"
+            aria-expanded="false"
+            aria-controls="mobile-menu"
+          >
+            <svg id="icon-hamburger" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <svg id="icon-close" xmlns="http://www.w3.org/2000/svg" class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
+      </div>
+      <!-- Mobile dropdown menu -->
+      <div
+        id="mobile-menu"
+        class="hidden border-t border-gray-200/60 dark:border-gray-800/60 sm:hidden"
+      >
+        <nav id="mobile-nav" class="flex flex-col gap-1 px-4 py-3">
+          <a
+            href="/"
+            data-nav-exact="true"
+            class="mobile-nav-link rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
+          >
+            Inicio
+          </a>
+          <a
+            href="/games"
+            class="mobile-nav-link rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
+          >
+            Partidos
+          </a>
+          <a
+            href="/teams"
+            class="mobile-nav-link rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
+          >
+            Equipos
+          </a>
+          <a
+            href="/players"
+            class="mobile-nav-link rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
+          >
+            Jugadores
+          </a>
+        </nav>
       </div>
     </header>
     <script is:inline>
       function updateActiveNav() {
         var path = window.location.pathname;
-        var links = document.querySelectorAll("#main-nav .nav-link");
         var activeClasses = ["bg-gray-100", "text-gray-900", "dark:bg-gray-800", "dark:text-white"];
         var inactiveClasses = [
           "text-gray-500",
@@ -101,7 +149,8 @@ const { title } = Astro.props;
           "dark:hover:bg-gray-800/60",
           "dark:hover:text-white",
         ];
-        links.forEach(function (link) {
+        var allNavLinks = document.querySelectorAll(".nav-link, .mobile-nav-link");
+        allNavLinks.forEach(function (link) {
           var href = link.getAttribute("href");
           var isExact = link.getAttribute("data-nav-exact") === "true";
           var isActive = isExact ? path === href : href !== "/" && path.startsWith(href);
@@ -115,8 +164,52 @@ const { title } = Astro.props;
           else link.removeAttribute("aria-current");
         });
       }
+
+      function setupMobileMenu() {
+        var btn = document.getElementById("mobile-menu-btn");
+        var menu = document.getElementById("mobile-menu");
+        var iconHamburger = document.getElementById("icon-hamburger");
+        var iconClose = document.getElementById("icon-close");
+        if (!btn || !menu) return;
+
+        btn.addEventListener("click", function () {
+          var isOpen = !menu.classList.contains("hidden");
+          menu.classList.toggle("hidden", isOpen);
+          btn.setAttribute("aria-expanded", String(!isOpen));
+          iconHamburger.classList.toggle("hidden", !isOpen);
+          iconClose.classList.toggle("hidden", isOpen);
+        });
+
+        // Close mobile menu when a link is clicked
+        var mobileLinks = menu.querySelectorAll("a");
+        mobileLinks.forEach(function (link) {
+          link.addEventListener("click", function () {
+            menu.classList.add("hidden");
+            btn.setAttribute("aria-expanded", "false");
+            iconHamburger.classList.remove("hidden");
+            iconClose.classList.add("hidden");
+          });
+        });
+      }
+
+      function closeMobileMenu() {
+        var btn = document.getElementById("mobile-menu-btn");
+        var menu = document.getElementById("mobile-menu");
+        var iconHamburger = document.getElementById("icon-hamburger");
+        var iconClose = document.getElementById("icon-close");
+        if (menu) menu.classList.add("hidden");
+        if (btn) btn.setAttribute("aria-expanded", "false");
+        if (iconHamburger) iconHamburger.classList.remove("hidden");
+        if (iconClose) iconClose.classList.add("hidden");
+      }
+
       updateActiveNav();
-      document.addEventListener("astro:page-load", updateActiveNav);
+      setupMobileMenu();
+      document.addEventListener("astro:page-load", function () {
+        updateActiveNav();
+        setupMobileMenu();
+        closeMobileMenu();
+      });
     </script>
 
     <!-- Live scores strip: transition:persist keeps it mounted during navigation -->
