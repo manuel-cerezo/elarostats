@@ -25,7 +25,7 @@ function GameCard({ game, onClick }: GameCardProps) {
     <button
       onClick={() => onClick(game.gameid)}
       aria-label={`${game.awayTeam} at ${game.homeTeam}`}
-      className="flex min-w-[250px] flex-col gap-1.5 rounded-xl border border-gray-700 bg-gray-800/60 px-3 py-3 text-left transition-colors hover:border-orange-500/50 hover:bg-gray-800"
+      className="flex min-w-[250px] flex-col gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-orange-500/50 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800"
     >
       {/* Matchup row: away | score | home */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2">
@@ -38,12 +38,12 @@ function GameCard({ game, onClick }: GameCardProps) {
               className="h-6 w-6 flex-shrink-0 object-contain"
             />
           )}
-          <span className="text-sm font-semibold text-gray-200">{game.awayTeam}</span>
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{game.awayTeam}</span>
         </div>
 
         {/* Score center */}
         {hasStarted ? (
-          <span className="text-center text-base font-bold tabular-nums text-white">
+          <span className="text-center text-base font-bold tabular-nums text-gray-900 dark:text-white">
             {game.awayScore}
             <span className="mx-0.5 text-xs font-normal text-gray-500">–</span>
             {game.homeScore}
@@ -54,7 +54,7 @@ function GameCard({ game, onClick }: GameCardProps) {
 
         {/* Home — left-aligned */}
         <div className="flex items-center justify-start gap-1.5">
-          <span className="text-sm font-semibold text-gray-200">{game.homeTeam}</span>
+          <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{game.homeTeam}</span>
           {homeLogo && (
             <img
               src={homeLogo}
@@ -87,7 +87,7 @@ export default function TodaysGames() {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-800" />
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800" />
         ))}
       </div>
     );
