@@ -1,157 +1,155 @@
 import { useEffect, useState } from "react";
+import teamsData from "../data/teams.json";
 
-interface GameTeam {
-  teamId: number;
-  teamName: string;
-  teamCity: string;
-  teamTricode: string;
-  wins: number;
-  losses: number;
-  score: number;
-  periods: { period: number; score: number }[];
+// --- Types ---
+
+interface PbpGame {
+  gameid: string;
+  time: string;
+  home: string; // e.g. "PHX 41"
+  away: string; // e.g. "ORL 51"
 }
 
-interface Game {
+interface PbpGamesResponse {
+  live_games: number;
+  game_data: PbpGame[];
+}
+
+interface ParsedGame {
   gameId: string;
-  gameStatus: number; // 1=pregame, 2=live, 3=final
-  gameStatusText: string;
-  period: number;
-  gameClock: string;
-  gameTimeUTC: string;
-  homeTeam: GameTeam;
-  awayTeam: GameTeam;
+  time: string;
+  homeAbbr: string;
+  homeScore: number;
+  awayAbbr: string;
+  awayScore: number;
+  isLive: boolean;
+  isFinal: boolean;
+  isPregame: boolean;
 }
 
-interface ScoreboardData {
-  scoreboard: {
-    gameDate: string;
-    games: Game[];
+// --- Helpers ---
+
+const teamByAbbr = new Map(teamsData.map((t) => [t.abbreviation, t]));
+
+function parseTeamField(field: string): { abbr: string; score: number } {
+  const parts = field.trim().split(" ");
+  return { abbr: parts[0] ?? "", score: parseInt(parts[1] ?? "0", 10) };
+}
+
+function parseGame(g: PbpGame, hasLiveGames: boolean): ParsedGame {
+  const home = parseTeamField(g.home);
+  const away = parseTeamField(g.away);
+  const hasStarted = home.score > 0 || away.score > 0;
+  const isFinal =
+    g.time.toLowerCase() === "final" || g.time.toLowerCase().startsWith("final");
+  const isLive = hasStarted && !isFinal && hasLiveGames;
+  const isPregame = !hasStarted && !isFinal;
+
+  return {
+    gameId: g.gameid,
+    time: g.time,
+    homeAbbr: home.abbr,
+    homeScore: home.score,
+    awayAbbr: away.abbr,
+    awayScore: away.score,
+    isLive,
+    isFinal,
+    isPregame,
   };
 }
 
-function getLocalTime(utcTimeStr: string, timezone: string): string {
-  try {
-    return new Date(utcTimeStr).toLocaleTimeString("es-ES", {
-      timeZone: timezone,
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  } catch {
-    return new Date(utcTimeStr).toLocaleTimeString("es-ES", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
-}
-
-function formatClock(clock: string): string {
-  if (!clock) return "";
-  const match = clock.match(/PT(\d+)M([\d.]+)S/);
-  if (!match) return clock;
-  const mins = match[1];
-  const secs = Math.floor(parseFloat(match[2])).toString().padStart(2, "0");
-  return `${mins}:${secs}`;
-}
+// --- Components ---
 
 function TeamRow({
-  team,
+  abbr,
+  score,
   isWinning,
   showScore,
 }: {
-  team: GameTeam;
+  abbr: string;
+  score: number;
   isWinning: boolean;
   showScore: boolean;
 }) {
+  const team = teamByAbbr.get(abbr);
+  const teamId = team?.teamId;
+  const teamName = team ? `${team.location} ${team.simpleName}` : abbr;
+
   return (
     <div
       className={`flex items-center justify-between gap-3 transition-opacity ${isWinning ? "opacity-100" : "opacity-40"}`}
     >
       <div className="flex items-center gap-2">
-        <img
-          src={`/teams/${team.teamId}.svg`}
-          alt={team.teamTricode}
-          className="h-6 w-6 flex-shrink-0 object-contain"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
+        {teamId && (
+          <img
+            src={`/teams/${teamId}.svg`}
+            alt={abbr}
+            className="h-6 w-6 flex-shrink-0 object-contain"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        )}
         <span
           className={`text-sm ${isWinning ? "font-bold text-white" : "font-medium text-gray-300"}`}
         >
-          {team.teamCity} {team.teamName}
+          {teamName}
         </span>
       </div>
       {showScore && (
         <span
           className={`text-sm tabular-nums ${isWinning ? "font-bold text-white" : "font-medium text-gray-500"}`}
         >
-          {team.score}
+          {score}
         </span>
       )}
     </div>
   );
 }
 
-function GameCard({ game, timezone }: { game: Game; timezone: string }) {
-  const isLive = game.gameStatus === 2;
-  const isFinal = game.gameStatus === 3;
-  const isPregame = game.gameStatus === 1;
-  const showScore = !isPregame;
-
-  const homeScore = game.homeTeam.score;
-  const awayScore = game.awayTeam.score;
-  const tied = homeScore === awayScore;
-
-  // In pregame, both show at full opacity
-  // In live/final, loser fades
-  const homeIsWinning = isPregame || tied || homeScore > awayScore;
-  const awayIsWinning = isPregame || tied || awayScore > homeScore;
-
-  const localTime = isPregame ? getLocalTime(game.gameTimeUTC, timezone) : null;
-  const clock = isLive ? formatClock(game.gameClock) : null;
+function GameCard({ game }: { game: ParsedGame }) {
+  const showScore = !game.isPregame;
+  const tied = game.homeScore === game.awayScore;
+  const homeIsWinning = game.isPregame || tied || game.homeScore > game.awayScore;
+  const awayIsWinning = game.isPregame || tied || game.awayScore > game.homeScore;
 
   return (
     <div
       className={`flex min-w-[215px] flex-col gap-2.5 rounded-xl border p-3 shadow-sm transition-colors hover:border-orange-500/40 ${
-        isLive
+        game.isLive
           ? "border-red-500/30 bg-[#111827]"
           : "border-[#374151] bg-[#111827]"
       }`}
     >
       {/* Status row */}
-      <div className="flex items-center justify-between gap-2">
-        {isLive && (
+      <div className="flex items-center justify-center gap-2">
+        {game.isLive && (
           <span className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-400">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-            {game.period > 4 ? `OT${game.period - 4}` : `Q${game.period}`}
-            {clock ? ` · ${clock}` : ""}
+            {game.time}
           </span>
         )}
-        {isFinal && (
+        {game.isFinal && (
           <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium text-gray-400">
             Final
           </span>
         )}
-        {isPregame && (
+        {game.isPregame && (
           <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-semibold text-orange-400">
-            {localTime}
+            {game.time}
           </span>
         )}
-        <span className="ml-auto text-xs text-gray-600">
-          {game.awayTeam.wins}–{game.awayTeam.losses} /{" "}
-          {game.homeTeam.wins}–{game.homeTeam.losses}
-        </span>
       </div>
 
       <TeamRow
-        team={game.awayTeam}
+        abbr={game.awayAbbr}
+        score={game.awayScore}
         isWinning={awayIsWinning}
         showScore={showScore}
       />
       <TeamRow
-        team={game.homeTeam}
+        abbr={game.homeAbbr}
+        score={game.homeScore}
         isWinning={homeIsWinning}
         showScore={showScore}
       />
@@ -159,34 +157,26 @@ function GameCard({ game, timezone }: { game: Game; timezone: string }) {
   );
 }
 
+// --- Main ---
+
 export default function LiveScores() {
-  const [games, setGames] = useState<Game[]>([]);
+  const [games, setGames] = useState<ParsedGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [timezone, setTimezone] = useState("UTC");
-  const [gameDate, setGameDate] = useState("");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("elarostats_timezone");
-    if (stored) {
-      setTimezone(stored);
-    } else {
-      const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      setTimezone(detected);
-      localStorage.setItem("elarostats_timezone", detected);
-    }
-  }, []);
 
   useEffect(() => {
     async function fetchScores() {
       try {
-        const res = await fetch(
-          "https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json",
-        );
-        if (!res.ok) throw new Error("Failed to fetch");
-        const data: ScoreboardData = await res.json();
-        setGames(data.scoreboard.games);
-        setGameDate(data.scoreboard.gameDate);
+        const res = await fetch("https://api.pbpstats.com/live/games/nba");
+        const data: PbpGamesResponse = await res.json();
+        if (!data.game_data?.length) {
+          setGames([]);
+          setError(false);
+          setLoading(false);
+          return;
+        }
+        const parsed = data.game_data.map((g) => parseGame(g, data.live_games > 0));
+        setGames(parsed);
         setError(false);
       } catch {
         setError(true);
@@ -217,13 +207,11 @@ export default function LiveScores() {
 
   if (error || games.length === 0) return null;
 
-  const formattedDate = gameDate
-    ? new Date(gameDate + "T12:00:00").toLocaleDateString("es-ES", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      })
-    : "";
+  const today = new Date().toLocaleDateString("es-ES", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 
   return (
     <div className="w-full border-b border-gray-800/60 bg-gray-950">
@@ -232,14 +220,12 @@ export default function LiveScores() {
           NBA
         </span>
         <span className="text-xs text-gray-700">·</span>
-        <span className="text-xs text-gray-500">{formattedDate}</span>
-        <span className="text-xs text-gray-700">·</span>
-        <span className="text-xs text-gray-600">{timezone}</span>
+        <span className="text-xs text-gray-500">{today}</span>
       </div>
       <div className="overflow-x-auto px-4 pb-3 pt-2">
         <div className="flex gap-3" style={{ minWidth: "max-content" }}>
           {games.map((game) => (
-            <GameCard key={game.gameId} game={game} timezone={timezone} />
+            <GameCard key={game.gameId} game={game} />
           ))}
         </div>
       </div>
