@@ -40,14 +40,14 @@ function TeamRow({
           />
         )}
         <span
-          className={`text-sm ${isWinning ? "font-bold text-white" : "font-medium text-gray-300"}`}
+          className={`text-sm ${isWinning ? "font-bold text-gray-900 dark:text-white" : "font-medium text-gray-500 dark:text-gray-300"}`}
         >
           {teamName}
         </span>
       </div>
       {showScore && (
         <span
-          className={`text-sm tabular-nums ${isWinning ? "font-bold text-white" : "font-medium text-gray-500"}`}
+          className={`text-sm tabular-nums ${isWinning ? "font-bold text-gray-900 dark:text-white" : "font-medium text-gray-400 dark:text-gray-500"}`}
         >
           {score}
         </span>
@@ -67,8 +67,8 @@ function GameCard({ game }: { game: ParsedLiveGame }) {
       href={`/games/live?id=${game.gameId}`}
       className={`flex min-w-[215px] flex-col gap-2.5 rounded-xl border p-3 shadow-sm transition-colors hover:border-orange-500/40 ${
         game.isLive
-          ? "border-red-500/30 bg-[#111827]"
-          : "border-[#374151] bg-[#111827]"
+          ? "border-red-500/30 bg-gray-50 dark:bg-[#111827]"
+          : "border-gray-200 bg-gray-50 dark:border-[#374151] dark:bg-[#111827]"
       }`}
     >
       {/* Status row */}
@@ -80,7 +80,7 @@ function GameCard({ game }: { game: ParsedLiveGame }) {
           </span>
         )}
         {game.isFinal && (
-          <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-medium text-gray-400">
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-gray-400">
             Final
           </span>
         )}
@@ -129,12 +129,12 @@ export default function LiveScores() {
 
   if (isLoading) {
     return (
-      <div className="w-full border-b border-gray-800/60 bg-gray-950 px-4 py-3">
+      <div className="w-full border-b border-gray-200 bg-gray-100 px-4 py-3 dark:border-gray-800/60 dark:bg-gray-950">
         <div className="flex gap-3">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-[90px] min-w-[215px] animate-pulse rounded-xl bg-gray-800/40"
+              className="h-[90px] min-w-[215px] animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800/40"
             />
           ))}
         </div>
@@ -151,12 +151,12 @@ export default function LiveScores() {
   });
 
   return (
-    <div className="w-full border-b border-gray-800/60 bg-gray-950">
+    <div className="w-full border-b border-gray-200 bg-gray-100 dark:border-gray-800/60 dark:bg-gray-950">
       <div className="flex items-center gap-2 px-4 pt-2.5">
         <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
           NBA
         </span>
-        <span className="text-xs text-gray-700">·</span>
+        <span className="text-xs text-gray-400 dark:text-gray-700">·</span>
         <span className="text-xs text-gray-500">{today}</span>
       </div>
       <div className="overflow-x-auto px-4 pb-3 pt-2">
