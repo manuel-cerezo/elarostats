@@ -12,7 +12,7 @@ export async function fetchApi<T>(
     });
   }
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { referrerPolicy: "no-referrer" });
 
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${res.statusText}`);

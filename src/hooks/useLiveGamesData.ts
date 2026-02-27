@@ -62,7 +62,9 @@ function parseGame(g: PbpGame, hasLiveGames: boolean): ParsedLiveGame {
 // --- Fetcher ---
 
 async function fetchLiveGames(): Promise<ParsedLiveGame[]> {
-  const res = await fetch("https://api.pbpstats.com/live/games/nba");
+  const res = await fetch("https://api.pbpstats.com/live/games/nba", {
+    referrerPolicy: "no-referrer",
+  });
   if (!res.ok) throw new Error(`PBPStats API error: ${res.status}`);
   const data: PbpGamesResponse = await res.json();
   if (!data.game_data?.length) return [];

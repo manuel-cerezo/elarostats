@@ -81,7 +81,9 @@ function useGameDetail(gameId: string, enabled: boolean) {
   return useQuery<GameDetail | null>({
     queryKey: ["game-detail", gameId],
     queryFn: async () => {
-      const res = await fetch(`${PBPSTATS_BASE}/live/game/${gameId}/team`);
+      const res = await fetch(`${PBPSTATS_BASE}/live/game/${gameId}/team`, {
+        referrerPolicy: "no-referrer",
+      });
       if (!res.ok) return null;
       return (await res.json()) as GameDetail;
     },
