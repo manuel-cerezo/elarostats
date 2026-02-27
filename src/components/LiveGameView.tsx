@@ -52,48 +52,48 @@ function TeamStatsBox({ label, abbr, score, stats }: TeamStatsBoxProps) {
   const tov = num(stats, "Turnovers");
 
   return (
-    <div className="flex flex-1 flex-col items-center gap-3 rounded-xl bg-gray-800/60 p-4">
+    <div className="flex flex-1 flex-col items-center gap-3 rounded-xl bg-gray-100 p-4 dark:bg-gray-800/60">
       <span className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</span>
       <div className="flex items-center gap-3">
         {logo && <img src={logo} alt={abbr} className="h-10 w-10 object-contain" />}
-        <span className="text-4xl font-black text-white">{score}</span>
+        <span className="text-4xl font-black text-gray-900 dark:text-white">{score}</span>
       </div>
-      <p className="text-sm font-semibold text-gray-300">{abbr}</p>
+      <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{abbr}</p>
       {fga > 0 && (
-        <div className="w-full space-y-1 border-t border-gray-700 pt-3 text-xs text-gray-400">
+        <div className="w-full space-y-1 border-t border-gray-200 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
           <div className="flex justify-between">
             <span>FG</span>
-            <span className="font-medium text-gray-200">
+            <span className="font-medium text-gray-700 dark:text-gray-200">
               {fgm}/{fga} ({fga > 0 ? ((fgm / fga) * 100).toFixed(1) : "0.0"}%)
             </span>
           </div>
           <div className="flex justify-between">
             <span>3P</span>
-            <span className="font-medium text-gray-200">
+            <span className="font-medium text-gray-700 dark:text-gray-200">
               {fg3m}/{fg3a} ({fg3a > 0 ? ((fg3m / fg3a) * 100).toFixed(1) : "0.0"}%)
             </span>
           </div>
           <div className="flex justify-between">
             <span>FTA</span>
-            <span className="font-medium text-gray-200">{fta}</span>
+            <span className="font-medium text-gray-700 dark:text-gray-200">{fta}</span>
           </div>
           <div className="flex justify-between">
             <span>REB</span>
-            <span className="font-medium text-gray-200">{reb}</span>
+            <span className="font-medium text-gray-700 dark:text-gray-200">{reb}</span>
           </div>
           <div className="flex justify-between">
             <span>AST</span>
-            <span className="font-medium text-gray-200">{ast}</span>
+            <span className="font-medium text-gray-700 dark:text-gray-200">{ast}</span>
           </div>
           <div className="flex justify-between">
             <span>STL/BLK</span>
-            <span className="font-medium text-gray-200">
+            <span className="font-medium text-gray-700 dark:text-gray-200">
               {stl}/{blk}
             </span>
           </div>
           <div className="flex justify-between">
             <span>TOV</span>
-            <span className="font-medium text-gray-200">{tov}</span>
+            <span className="font-medium text-gray-700 dark:text-gray-200">{tov}</span>
           </div>
         </div>
       )}
@@ -147,10 +147,10 @@ function PlayerTable({ label, abbr, players }: PlayerTableProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-700 bg-gray-800/40">
-      <div className="flex items-center gap-2 border-b border-gray-700 px-4 py-3">
+    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/40">
+      <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         {logo && <img src={logo} alt={abbr} className="h-5 w-5 object-contain" />}
-        <span className="text-sm font-semibold text-gray-200">{label}</span>
+        <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">{label}</span>
       </div>
       <table className="w-full text-xs">
         <thead>
@@ -170,10 +170,10 @@ function PlayerTable({ label, abbr, players }: PlayerTableProps) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-t border-gray-700/50 text-gray-300 hover:bg-gray-700/30">
-              <td className="px-4 py-2 font-medium text-white">{row.name}</td>
-              <td className="px-2 py-2 text-right text-gray-400">{row.minutes}</td>
-              <td className="px-2 py-2 text-right font-semibold text-white">{row.pts}</td>
+            <tr key={i} className="border-t border-gray-100 text-gray-600 hover:bg-gray-50 dark:border-gray-700/50 dark:text-gray-300 dark:hover:bg-gray-700/30">
+              <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{row.name}</td>
+              <td className="px-2 py-2 text-right text-gray-500 dark:text-gray-400">{row.minutes}</td>
+              <td className="px-2 py-2 text-right font-semibold text-gray-900 dark:text-white">{row.pts}</td>
               <td className="px-2 py-2 text-right">{row.reb}</td>
               <td className="px-2 py-2 text-right">{row.ast}</td>
               <td className="px-2 py-2 text-right">
@@ -301,7 +301,7 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
       </div>
 
       {/* Scoreboard */}
-      <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-6">
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800/60">
         <div className="flex items-center justify-center gap-8">
           {/* Away */}
           <div className="flex flex-col items-center gap-2">
@@ -312,20 +312,20 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
                 className="h-16 w-16 object-contain"
               />
             )}
-            <span className="text-sm font-medium text-gray-400">{away.abbr}</span>
-            <span className="text-5xl font-black text-white">{away.score}</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
+            <span className="text-5xl font-black text-gray-900 dark:text-white">{away.score}</span>
           </div>
 
           <div className="text-center">
             {gameNotStarted ? (
-              <p className="text-lg font-medium text-gray-400">{time}</p>
+              <p className="text-lg font-medium text-gray-500 dark:text-gray-400">{time}</p>
             ) : (
               <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-1 text-xs font-medium text-red-400">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
                 {t("liveTag")}
               </span>
             )}
-            <p className="mt-1 text-xs text-gray-600">{gameId}</p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-600">{gameId}</p>
           </div>
 
           {/* Home */}
@@ -337,8 +337,8 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
                 className="h-16 w-16 object-contain"
               />
             )}
-            <span className="text-sm font-medium text-gray-400">{home.abbr}</span>
-            <span className="text-5xl font-black text-white">{home.score}</span>
+            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
+            <span className="text-5xl font-black text-gray-900 dark:text-white">{home.score}</span>
           </div>
         </div>
       </div>
