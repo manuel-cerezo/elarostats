@@ -13,7 +13,9 @@ export function parseTeamField(field: string): { abbr: string; score: number } {
 }
 
 export async function fetchTodaysGames(): Promise<TodaysGamesResponse> {
-  const res = await fetch(`${PBPSTATS_BASE}/live/games/nba`);
+  const res = await fetch(`${PBPSTATS_BASE}/live/games/nba`, {
+    referrerPolicy: "no-referrer",
+  });
   if (!res.ok) {
     throw new Error(`Error fetching today's games: ${res.status}`);
   }
@@ -26,6 +28,7 @@ export async function fetchLiveGame(
 ): Promise<LiveGameResponse> {
   const res = await fetch(
     `${PBPSTATS_BASE}/live/game/${gameId}/${resultType}`,
+    { referrerPolicy: "no-referrer" },
   );
   if (!res.ok) {
     throw new Error(`Error fetching live game ${gameId}: ${res.status}`);
