@@ -82,6 +82,13 @@ export const es = {
   efgPctTitle: "Porcentaje efectivo de tiro de campo",
   tsPctTitle: "Porcentaje de tiro verdadero",
 
+  // Gráfico de flujo del partido
+  gameFlow: "Flujo del partido",
+  gameFlowHomeLeads: "{team} lidera",
+  gameFlowAwayLeads: "{team} lidera",
+  gameFlowTied: "Empate",
+  gameFlowMargin: "Margen",
+
   // Live game
   updatedSecondsAgo: "Actualizado hace {seconds}s",
   updatedJustNow: "Actualizado hace unos segundos",

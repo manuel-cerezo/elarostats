@@ -133,7 +133,10 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
       }`}
     >
       {/* Header with status */}
-      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 dark:border-gray-800/60">
+      <a
+        href={`/games/live?id=${game.gameId}`}
+        className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 transition-colors hover:bg-gray-50 dark:border-gray-800/60 dark:hover:bg-gray-800/40"
+      >
         <div className="flex items-center gap-2">
           {game.isLive && (
             <span className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-semibold text-red-400">
@@ -155,7 +158,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
             WP: {gameInfo.home_win_probability}% – {gameInfo.visitor_win_probability}%
           </span>
         )}
-      </div>
+      </a>
 
       {/* Scoreboard */}
       <div className="px-4 py-4">

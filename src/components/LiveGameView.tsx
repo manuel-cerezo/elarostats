@@ -3,6 +3,8 @@ import { useLiveGame } from "../hooks/useLiveGame";
 import { useTodaysGames } from "../hooks/useTodaysGames";
 import { useTranslation } from "../hooks/useTranslation";
 import teamsData from "../data/teams.json";
+import GameFlowChart from "./GameFlowChart";
+import type { ScoreMargin } from "./GameFlowChart";
 
 const abbrToTeamId = new Map<string, number>(teamsData.map((t) => [t.abbreviation, t.teamId]));
 
@@ -242,9 +244,11 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
 
   const teamQuery = useLiveGame(gameId, "team");
   const playerQuery = useLiveGame(gameId, "player");
+  const flowQuery = useLiveGame(gameId, "game-flow");
 
   const teamData = teamQuery.data;
   const playerData = playerQuery.data;
+  const flowData = flowQuery.data;
 
   const gameNotStarted = teamData?.status === "error" || !teamData?.game_data;
 
@@ -267,8 +271,19 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const awayPlayers = playerGameData?.Away?.FullGame ?? [];
   const homePlayers = playerGameData?.Home?.FullGame ?? [];
 
-  const isRefetching = teamQuery.isFetching || playerQuery.isFetching;
-  const lastUpdated = Math.max(teamQuery.dataUpdatedAt ?? 0, playerQuery.dataUpdatedAt ?? 0);
+  // Game flow chart data
+  const flowGameData = flowData?.game_data as
+    | { score_margins?: ScoreMargin[]; max_time?: number }
+    | undefined;
+  const scoreMargins = flowGameData?.score_margins ?? [];
+  const maxTime = flowGameData?.max_time ?? 2880;
+
+  const isRefetching = teamQuery.isFetching || playerQuery.isFetching || flowQuery.isFetching;
+  const lastUpdated = Math.max(
+    teamQuery.dataUpdatedAt ?? 0,
+    playerQuery.dataUpdatedAt ?? 0,
+    flowQuery.dataUpdatedAt ?? 0,
+  );
 
   return (
     <div className="space-y-6">
@@ -332,6 +347,16 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
         <p className="text-center text-sm text-gray-500">{t("gameNotStarted")}</p>
       ) : (
         <>
+          {/* Game flow chart */}
+          {scoreMargins.length > 0 && (
+            <GameFlowChart
+              margins={scoreMargins}
+              maxTime={maxTime}
+              homeAbbr={home.abbr}
+              awayAbbr={away.abbr}
+            />
+          )}
+
           {/* Team stats */}
           {(Object.keys(awayTeamStats).length > 0 || Object.keys(homeTeamStats).length > 0) && (
             <div className="flex gap-4">
