@@ -64,7 +64,7 @@ function GameCard({ game }: { game: ParsedLiveGame }) {
 
   return (
     <a
-      href="/games"
+      href={`/games/live?id=${game.gameId}`}
       className={`flex min-w-[215px] flex-col gap-2.5 rounded-xl border p-3 shadow-sm transition-colors hover:border-orange-500/40 ${
         game.isLive
           ? "border-red-500/30 bg-[#111827]"

@@ -82,6 +82,13 @@ export const en = {
   efgPctTitle: "Effective field goal percentage",
   tsPctTitle: "True shooting percentage",
 
+  // Game flow chart
+  gameFlow: "Game Flow",
+  gameFlowHomeLeads: "{team} leads",
+  gameFlowAwayLeads: "{team} leads",
+  gameFlowTied: "Tied",
+  gameFlowMargin: "Margin",
+
   // Live game
   updatedSecondsAgo: "Updated {seconds}s ago",
   updatedJustNow: "Updated just now",
