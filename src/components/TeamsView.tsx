@@ -28,11 +28,18 @@ interface PbpTeam {
   AtRimFGA: number;
   EfgPct?: number;
   TsPct?: number;
+  // W-L record
+  Wins: number;
+  Losses: number;
+  WinPct: number;
+  HomeWins: number;
+  HomeLosses: number;
+  AwayWins: number;
+  AwayLosses: number;
+  Last10Wins: number;
+  Last10Losses: number;
+  Streak: string;
   [key: string]: unknown;
-}
-
-interface PbpResponse {
-  multi_row_table_data: PbpTeam[];
 }
 
 const localTeamById = new Map(teamsData.map((t) => [t.teamId, t]));
@@ -98,6 +105,7 @@ function TeamRow({
 
   const fg3Pct = pct(team.FG3M, team.FG3A);
   const atRimPct = pct(team.AtRimFGM, team.AtRimFGA);
+  const record = `${team.Wins}-${team.Losses}`;
 
   return (
     <>
@@ -123,18 +131,21 @@ function TeamRow({
           </div>
         </td>
         <td className="px-4 py-3 text-center">
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">{record}</span>
+        </td>
+        <td className="px-4 py-3 text-center">
           <span
             className={`text-sm font-semibold ${Number(netRtg) > 0 ? "text-green-400" : Number(netRtg) < 0 ? "text-red-400" : "text-gray-400"}`}
           >
             {netRtg}
           </span>
         </td>
-        <td className="px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-300">{offRtg}</td>
-        <td className="px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-300">{defRtg}</td>
-        <td className="px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400">
+        <td className="hidden px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-300 sm:table-cell">{offRtg}</td>
+        <td className="hidden px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-300 sm:table-cell">{defRtg}</td>
+        <td className="hidden px-4 py-3 text-center text-sm text-gray-600 dark:text-gray-400 sm:table-cell">
           {round(team.Pace)}
         </td>
-        <td className="px-4 py-3 text-center text-sm text-gray-400">{fg3Pct}</td>
+        <td className="hidden px-4 py-3 text-center text-sm text-gray-400 sm:table-cell">{fg3Pct}</td>
         <td className="px-4 py-3 text-center">
           <span
             className={`text-sm font-medium ${team.PlusMinus > 0 ? "text-green-400" : team.PlusMinus < 0 ? "text-red-400" : "text-gray-400"}`}
@@ -161,8 +172,12 @@ function TeamRow({
 
       {expanded && (
         <tr className="border-b border-gray-100 bg-gray-50 dark:border-gray-800/40 dark:bg-gray-900/50">
-          <td colSpan={9} className="px-4 py-4">
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          <td colSpan={10} className="px-4 py-4">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-10">
+              <StatBadge label={t("homeRecord")} value={`${team.HomeWins}-${team.HomeLosses}`} />
+              <StatBadge label={t("awayRecord")} value={`${team.AwayWins}-${team.AwayLosses}`} />
+              <StatBadge label={t("last10")} value={`${team.Last10Wins}-${team.Last10Losses}`} />
+              <StatBadge label={t("streak")} value={team.Streak || "—"} highlight />
               <StatBadge label={t("assists")} value={String(team.Assists)} />
               <StatBadge label={t("rebounds")} value={String(team.Rebounds)} />
               <StatBadge label={t("steals")} value={String(team.Steals)} />
@@ -177,7 +192,7 @@ function TeamRow({
   );
 }
 
-type SortKey = "netRtg" | "offRtg" | "defRtg" | "pace" | "fg3Pct" | "plusMinus";
+type SortKey = "record" | "netRtg" | "offRtg" | "defRtg" | "pace" | "fg3Pct" | "plusMinus";
 
 function getNetRtg(team: PbpTeam): number {
   if (!team.OffPoss || !team.DefPoss) return 0;
@@ -193,7 +208,7 @@ export default function TeamsView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("netRtg");
+  const [sortKey, setSortKey] = useState<SortKey>("record");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
@@ -203,7 +218,7 @@ export default function TeamsView() {
         const { data, error: sbError } = await supabase
           .from("pbp_team_totals")
           .select(
-            "entity_id, name, team_abbreviation, games_played, points, plus_minus, off_poss, def_poss, fg2m, fg2a, fg3m, fg3a, at_rim_fgm, at_rim_fga, assists, rebounds, steals, blocks, turnovers, efg_pct, ts_pct, opponent_points, raw_data",
+            "entity_id, name, team_abbreviation, games_played, points, plus_minus, off_poss, def_poss, fg2m, fg2a, fg3m, fg3a, at_rim_fgm, at_rim_fga, assists, rebounds, steals, blocks, turnovers, efg_pct, ts_pct, opponent_points, pace, wins, losses, win_pct, home_wins, home_losses, away_wins, away_losses, last_10_wins, last_10_losses, streak, raw_data",
           )
           .eq("season", "2025-26")
           .eq("season_type", "Regular Season");
@@ -220,7 +235,7 @@ export default function TeamsView() {
               PlusMinus: r.plus_minus ?? 0,
               Points: r.points ?? 0,
               OpponentPoints: r.opponent_points ?? 0,
-              Pace: Number(raw.Pace) || 0,
+              Pace: r.pace != null ? Number(r.pace) : (Number(raw.Pace) || 0),
               OffPoss: r.off_poss ?? 0,
               DefPoss: r.def_poss ?? 0,
               Assists: r.assists ?? 0,
@@ -236,6 +251,17 @@ export default function TeamsView() {
               AtRimFGA: r.at_rim_fga ?? 0,
               EfgPct: r.efg_pct != null ? Number(r.efg_pct) : undefined,
               TsPct: r.ts_pct != null ? Number(r.ts_pct) : undefined,
+              // W-L record
+              Wins: r.wins ?? 0,
+              Losses: r.losses ?? 0,
+              WinPct: r.win_pct != null ? Number(r.win_pct) : 0,
+              HomeWins: r.home_wins ?? 0,
+              HomeLosses: r.home_losses ?? 0,
+              AwayWins: r.away_wins ?? 0,
+              AwayLosses: r.away_losses ?? 0,
+              Last10Wins: r.last_10_wins ?? 0,
+              Last10Losses: r.last_10_losses ?? 0,
+              Streak: r.streak ?? "",
             };
           }),
         );
@@ -264,6 +290,10 @@ export default function TeamsView() {
     let bVal = 0;
 
     switch (sortKey) {
+      case "record":
+        aVal = a.WinPct ?? 0;
+        bVal = b.WinPct ?? 0;
+        break;
       case "netRtg":
         aVal = getNetRtg(a);
         bVal = getNetRtg(b);
@@ -299,15 +329,17 @@ export default function TeamsView() {
     label,
     sortK,
     title,
+    hideOnMobile,
   }: {
     label: string;
     sortK: SortKey;
     title?: string;
+    hideOnMobile?: boolean;
   }) {
     const active = sortKey === sortK;
     return (
       <th
-        className="cursor-pointer px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider transition-colors hover:text-orange-400"
+        className={`cursor-pointer px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider transition-colors hover:text-orange-400 ${hideOnMobile ? "hidden sm:table-cell" : ""}`}
         onClick={() => toggleSort(sortK)}
         title={title}
       >
@@ -362,11 +394,12 @@ export default function TeamsView() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                   {t("teamLabel")}
                 </th>
+                <SortHeader label={t("record")} sortK="record" title={t("recordTitle")} />
                 <SortHeader label="Net Rtg" sortK="netRtg" title={t("netRtgTitle")} />
-                <SortHeader label="Off Rtg" sortK="offRtg" title={t("offRtgTitle")} />
-                <SortHeader label="Def Rtg" sortK="defRtg" title={t("defRtgTitle")} />
-                <SortHeader label="Pace" sortK="pace" title={t("paceTitle")} />
-                <SortHeader label="3P%" sortK="fg3Pct" title={t("fg3PctTitle")} />
+                <SortHeader label="Off Rtg" sortK="offRtg" title={t("offRtgTitle")} hideOnMobile />
+                <SortHeader label="Def Rtg" sortK="defRtg" title={t("defRtgTitle")} hideOnMobile />
+                <SortHeader label="Pace" sortK="pace" title={t("paceTitle")} hideOnMobile />
+                <SortHeader label="3P%" sortK="fg3Pct" title={t("fg3PctTitle")} hideOnMobile />
                 <SortHeader label="+/-" sortK="plusMinus" title={t("plusMinusTitle")} />
                 <th className="px-4 py-3" />
               </tr>

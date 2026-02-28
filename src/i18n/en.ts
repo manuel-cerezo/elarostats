@@ -63,6 +63,16 @@ export const en = {
   turnovers: "Turnovers",
   atRimPct: "At Rim %",
 
+  // Team records
+  record: "Record",
+  homeRecord: "Home",
+  awayRecord: "Away",
+  last10: "Last 10",
+  streak: "Streak",
+  conference: "Conference",
+  division: "Division",
+  recordTitle: "Win-loss record",
+
   // Team stats tooltips
   netRtgTitle: "Net Rating (Off - Def per 100 possessions)",
   offRtgTitle: "Offensive Rating (points per 100 possessions)",
