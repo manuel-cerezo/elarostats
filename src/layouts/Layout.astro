@@ -67,9 +67,9 @@ const ogImageUrl = ogImage.startsWith("http") ? ogImage : new URL(ogImage, Astro
       <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     )}
 
-    <!-- Anti-flash: aplicar tema antes del primer paint -->
+    <!-- Anti-flash: aplicar tema antes del primer paint y tras cada swap de ViewTransitions -->
     <script is:inline>
-      (function () {
+      function applyStoredTheme() {
         var stored = localStorage.getItem("elarostats-theme");
         var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         var theme =
@@ -82,7 +82,9 @@ const ogImageUrl = ogImage.startsWith("http") ? ogImage : new URL(ogImage, Astro
                 : "light";
         if (theme === "dark") document.documentElement.classList.add("dark");
         else document.documentElement.classList.remove("dark");
-      })();
+      }
+      applyStoredTheme();
+      document.addEventListener("astro:after-swap", applyStoredTheme);
     </script>
   </head>
   <body class="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
@@ -179,88 +181,92 @@ const ogImageUrl = ogImage.startsWith("http") ? ogImage : new URL(ogImage, Astro
           </a>
         </nav>
       </div>
-    </header>
-    <script is:inline>
-      function updateActiveNav() {
-        var path = window.location.pathname;
-        var activeClasses = ["bg-gray-100", "text-gray-900", "dark:bg-gray-800", "dark:text-white"];
-        var inactiveClasses = [
-          "text-gray-500",
-          "hover:bg-gray-100",
-          "hover:text-gray-900",
-          "dark:text-gray-400",
-          "dark:hover:bg-gray-800/60",
-          "dark:hover:text-white",
-        ];
-        var allNavLinks = document.querySelectorAll(".nav-link, .mobile-nav-link");
-        allNavLinks.forEach(function (link) {
-          var href = link.getAttribute("href");
-          var isExact = link.getAttribute("data-nav-exact") === "true";
-          var isActive = isExact ? path === href : href !== "/" && path.startsWith(href);
-          activeClasses.forEach(function (c) {
-            link.classList.toggle(c, isActive);
+      <!-- Nav script inside transition:persist so it runs once and never accumulates listeners -->
+      <script is:inline>
+        function updateActiveNav() {
+          var path = window.location.pathname;
+          var activeClasses = ["bg-gray-100", "text-gray-900", "dark:bg-gray-800", "dark:text-white"];
+          var inactiveClasses = [
+            "text-gray-500",
+            "hover:bg-gray-100",
+            "hover:text-gray-900",
+            "dark:text-gray-400",
+            "dark:hover:bg-gray-800/60",
+            "dark:hover:text-white",
+          ];
+          var allNavLinks = document.querySelectorAll(".nav-link, .mobile-nav-link");
+          allNavLinks.forEach(function (link) {
+            var href = link.getAttribute("href");
+            var isExact = link.getAttribute("data-nav-exact") === "true";
+            var isActive = isExact ? path === href : href !== "/" && path.startsWith(href);
+            activeClasses.forEach(function (c) {
+              link.classList.toggle(c, isActive);
+            });
+            inactiveClasses.forEach(function (c) {
+              link.classList.toggle(c, !isActive);
+            });
+            if (isActive) link.setAttribute("aria-current", "page");
+            else link.removeAttribute("aria-current");
           });
-          inactiveClasses.forEach(function (c) {
-            link.classList.toggle(c, !isActive);
+        }
+
+        function setupMobileMenu() {
+          var btn = document.getElementById("mobile-menu-btn");
+          var menu = document.getElementById("mobile-menu");
+          var iconHamburger = document.getElementById("icon-hamburger");
+          var iconClose = document.getElementById("icon-close");
+          if (!btn || !menu) return;
+
+          btn.addEventListener("click", function () {
+            var isOpen = !menu.classList.contains("hidden");
+            menu.classList.toggle("hidden", isOpen);
+            btn.setAttribute("aria-expanded", String(!isOpen));
+            iconHamburger.classList.toggle("hidden", !isOpen);
+            iconClose.classList.toggle("hidden", isOpen);
           });
-          if (isActive) link.setAttribute("aria-current", "page");
-          else link.removeAttribute("aria-current");
-        });
-      }
 
-      function setupMobileMenu() {
-        var btn = document.getElementById("mobile-menu-btn");
-        var menu = document.getElementById("mobile-menu");
-        var iconHamburger = document.getElementById("icon-hamburger");
-        var iconClose = document.getElementById("icon-close");
-        if (!btn || !menu) return;
-
-        btn.addEventListener("click", function () {
-          var isOpen = !menu.classList.contains("hidden");
-          menu.classList.toggle("hidden", isOpen);
-          btn.setAttribute("aria-expanded", String(!isOpen));
-          iconHamburger.classList.toggle("hidden", !isOpen);
-          iconClose.classList.toggle("hidden", isOpen);
-        });
-
-        // Close mobile menu when a link is clicked
-        var mobileLinks = menu.querySelectorAll("a");
-        mobileLinks.forEach(function (link) {
-          link.addEventListener("click", function () {
-            menu.classList.add("hidden");
-            btn.setAttribute("aria-expanded", "false");
-            iconHamburger.classList.remove("hidden");
-            iconClose.classList.add("hidden");
+          // Close mobile menu when a link is clicked
+          var mobileLinks = menu.querySelectorAll("a");
+          mobileLinks.forEach(function (link) {
+            link.addEventListener("click", function () {
+              menu.classList.add("hidden");
+              btn.setAttribute("aria-expanded", "false");
+              iconHamburger.classList.remove("hidden");
+              iconClose.classList.add("hidden");
+            });
           });
-        });
-      }
+        }
 
-      function closeMobileMenu() {
-        var btn = document.getElementById("mobile-menu-btn");
-        var menu = document.getElementById("mobile-menu");
-        var iconHamburger = document.getElementById("icon-hamburger");
-        var iconClose = document.getElementById("icon-close");
-        if (menu) menu.classList.add("hidden");
-        if (btn) btn.setAttribute("aria-expanded", "false");
-        if (iconHamburger) iconHamburger.classList.remove("hidden");
-        if (iconClose) iconClose.classList.add("hidden");
-      }
+        function closeMobileMenu() {
+          var btn = document.getElementById("mobile-menu-btn");
+          var menu = document.getElementById("mobile-menu");
+          var iconHamburger = document.getElementById("icon-hamburger");
+          var iconClose = document.getElementById("icon-close");
+          if (menu) menu.classList.add("hidden");
+          if (btn) btn.setAttribute("aria-expanded", "false");
+          if (iconHamburger) iconHamburger.classList.remove("hidden");
+          if (iconClose) iconClose.classList.add("hidden");
+        }
 
-      updateActiveNav();
-      setupMobileMenu();
-      document.addEventListener("astro:page-load", function () {
         updateActiveNav();
-        closeMobileMenu();
-      });
-    </script>
+        setupMobileMenu();
+        document.addEventListener("astro:page-load", function () {
+          updateActiveNav();
+          closeMobileMenu();
+        });
+      </script>
+    </header>
 
     <!-- Live scores strip: transition:persist keeps it mounted during navigation -->
     <div transition:persist="live-scores">
       <LiveScoresIsland client:only="react" />
     </div>
 
-    <!-- Page content -->
-    <slot />
+    <!-- Page content: transition:animate="none" makes the swap instant so React islands
+         don't create a double-render blink during the ViewTransitions fade -->
+    <div transition:animate="none">
+      <slot />
+    </div>
 
     <SpeedInsights />
   </body>
