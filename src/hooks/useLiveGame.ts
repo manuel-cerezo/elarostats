@@ -8,9 +8,10 @@ export function useLiveGame(gameId: string, resultType: LiveResultType, isFinal 
   return useQuery<LiveGameResponse>({
     queryKey: ["live-game", gameId, resultType],
     queryFn: () => fetchLiveGame(gameId, resultType),
-    // When the game is over, cache the result indefinitely — no more refetches needed
+    // Keep data in cache forever — prevents GC during navigation (even before isFinal is known)
+    gcTime: Infinity,
+    // When the game is over, mark stale immediately and stop polling
     staleTime: isFinal ? Infinity : REFETCH_INTERVAL,
-    gcTime: isFinal ? Infinity : undefined,
     refetchInterval: isFinal ? false : REFETCH_INTERVAL,
     enabled: Boolean(gameId),
   });

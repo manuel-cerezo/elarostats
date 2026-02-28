@@ -428,8 +428,8 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
             {gameNotStarted ? (
               <p className="text-lg font-medium text-gray-500 dark:text-gray-400">{time}</p>
             ) : isFinal ? (
-              <span className="rounded-full bg-gray-700/60 px-2 py-1 text-xs font-medium text-gray-400">
-                {time}
+              <span className="rounded-full bg-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:bg-gray-700/60 dark:text-gray-400">
+                {time.split("/")[0].trim()}
               </span>
             ) : (
               <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-1 text-xs font-medium text-red-400">
@@ -437,7 +437,6 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
                 {t("liveTag")}
               </span>
             )}
-            <p className="mt-1 text-xs text-gray-400 dark:text-gray-600">{gameId}</p>
           </div>
 
           {/* Home */}
