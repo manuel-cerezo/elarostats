@@ -1,0 +1,32 @@
+name: Sync Completed Games
+
+on:
+  schedule:
+    # 09:30 UTC = 04:30 AM ET. NBA games end by ~04:30 UTC at the latest,
+    # so all last-night's games will be "Final" by the time this runs.
+    - cron: "30 9 * * *"
+  workflow_dispatch: # permite lanzarlo manualmente desde GitHub
+
+jobs:
+  sync:
+    name: Cache completed game data from PBPStats → Supabase
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run sync script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: npm run sync:games
