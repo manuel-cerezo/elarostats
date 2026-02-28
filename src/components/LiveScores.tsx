@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import teamsData from "../data/teams.json";
 import { useLiveGamesData } from "../hooks/useLiveGamesData";
 import type { ParsedLiveGame } from "../hooks/useLiveGamesData";
+import { useTranslation } from "../hooks/useTranslation";
 
 // --- Helpers ---
 
@@ -56,7 +57,7 @@ function TeamRow({
   );
 }
 
-function GameCard({ game }: { game: ParsedLiveGame }) {
+function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useTranslation>["t"] }) {
   const showScore = !game.isPregame;
   const tied = game.homeScore === game.awayScore;
   const homeIsWinning = game.isPregame || tied || game.homeScore > game.awayScore;
@@ -81,7 +82,7 @@ function GameCard({ game }: { game: ParsedLiveGame }) {
         )}
         {game.isFinal && (
           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-white/5 dark:text-gray-400">
-            Final
+            {t("finalStatus")}
           </span>
         )}
         {game.isPregame && (
@@ -124,6 +125,7 @@ export default function LiveScores() {
 
   // Shared hook: pauses fetching & polling when hidden
   const { data: games, isLoading, isError } = useLiveGamesData(!hidden);
+  const { t, locale } = useTranslation();
 
   if (hidden) return null;
 
@@ -144,7 +146,7 @@ export default function LiveScores() {
 
   if (isError || !games || games.length === 0) return null;
 
-  const today = new Date().toLocaleDateString("es-ES", {
+  const today = new Date().toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -162,7 +164,7 @@ export default function LiveScores() {
       <div className="overflow-x-auto px-4 pb-3 pt-2">
         <div className="flex gap-3" style={{ minWidth: "max-content" }}>
           {games.map((game) => (
-            <GameCard key={game.gameId} game={game} />
+            <GameCard key={game.gameId} game={game} t={t} />
           ))}
         </div>
       </div>

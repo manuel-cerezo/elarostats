@@ -416,7 +416,7 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
 
   const homeRaw = gameInfo ? `${gameInfo.homeTeam} ${gameInfo.homeScore}` : "";
   const awayRaw = gameInfo ? `${gameInfo.awayTeam} ${gameInfo.awayScore}` : "";
-  const time = isFromSupabase ? "Final" : (gameInfo?.time ?? "");
+  const time = isFromSupabase ? t("finalStatus") : (gameInfo?.time ?? "");
   const isFinal = isFromSupabase || (gameInfo?.isFinal ?? false);
 
   // When data comes from Supabase, use the cached team info directly

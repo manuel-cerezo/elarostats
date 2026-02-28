@@ -102,24 +102,28 @@ const ogImageUrl = ogImage.startsWith("http") ? ogImage : new URL(ogImage, Astro
           <a
             href="/"
             data-nav-exact="true"
+            data-i18n="navHome"
             class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Inicio
           </a>
           <a
             href="/games"
+            data-i18n="navGames"
             class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Partidos
           </a>
           <a
             href="/teams"
+            data-i18n="navTeams"
             class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Equipos
           </a>
           <a
             href="/players"
+            data-i18n="navPlayers"
             class="nav-link rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Jugadores
@@ -136,6 +140,7 @@ const ogImageUrl = ogImage.startsWith("http") ? ogImage : new URL(ogImage, Astro
             id="mobile-menu-btn"
             class="inline-flex items-center justify-center rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white sm:hidden"
             aria-label="Abrir menú"
+            data-i18n-aria="openMenu"
             aria-expanded="false"
             aria-controls="mobile-menu"
           >
@@ -157,24 +162,28 @@ const ogImageUrl = ogImage.startsWith("http") ? ogImage : new URL(ogImage, Astro
           <a
             href="/"
             data-nav-exact="true"
+            data-i18n="navHome"
             class="mobile-nav-link rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Inicio
           </a>
           <a
             href="/games"
+            data-i18n="navGames"
             class="mobile-nav-link rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Partidos
           </a>
           <a
             href="/teams"
+            data-i18n="navTeams"
             class="mobile-nav-link rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Equipos
           </a>
           <a
             href="/players"
+            data-i18n="navPlayers"
             class="mobile-nav-link rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/60 dark:hover:text-white"
           >
             Jugadores
@@ -248,11 +257,49 @@ const ogImageUrl = ogImage.startsWith("http") ? ogImage : new URL(ogImage, Astro
           if (iconClose) iconClose.classList.add("hidden");
         }
 
+        // --- i18n: translate nav links from localStorage locale ---
+        var NAV_TRANSLATIONS = {
+          es: {
+            navHome: "Inicio",
+            navGames: "Partidos",
+            navTeams: "Equipos",
+            navPlayers: "Jugadores",
+            openMenu: "Abrir menú",
+          },
+          en: {
+            navHome: "Home",
+            navGames: "Games",
+            navTeams: "Teams",
+            navPlayers: "Players",
+            openMenu: "Open menu",
+          },
+        };
+
+        function applyNavLocale() {
+          var stored = localStorage.getItem("elarostats-lang");
+          var lang = stored === "en" ? "en" : "es";
+          var strings = NAV_TRANSLATIONS[lang];
+          document.querySelectorAll("[data-i18n]").forEach(function (el) {
+            var key = el.getAttribute("data-i18n");
+            if (strings[key]) el.textContent = strings[key];
+          });
+          document.querySelectorAll("[data-i18n-aria]").forEach(function (el) {
+            var key = el.getAttribute("data-i18n-aria");
+            if (strings[key]) el.setAttribute("aria-label", strings[key]);
+          });
+        }
+
+        applyNavLocale();
+        window.addEventListener("storage", function (e) {
+          if (e.key === "elarostats-lang") applyNavLocale();
+        });
+
         updateActiveNav();
         setupMobileMenu();
         document.addEventListener("astro:page-load", function () {
           updateActiveNav();
           closeMobileMenu();
+          applyNavLocale();
         });
       </script>
     </header>
