@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLiveGame } from "../hooks/useLiveGame";
 import { useTodaysGames } from "../hooks/useTodaysGames";
+import { useAllPlayers } from "../hooks/useAllPlayers";
 import { useTranslation } from "../hooks/useTranslation";
+import { NBA_CDN_BASE_URL } from "../constants/player";
 import teamsData from "../data/teams.json";
 import GameFlowChart from "./GameFlowChart";
 import type { ScoreMargin } from "./GameFlowChart";
+import type { Player } from "../types/player";
 
 const abbrToTeamId = new Map<string, number>(teamsData.map((t) => [t.abbreviation, t.teamId]));
 
@@ -101,50 +104,88 @@ function TeamStatsBox({ label, abbr, score, stats }: TeamStatsBoxProps) {
   );
 }
 
-interface PlayerRow {
-  name: string;
-  minutes: string;
-  pts: number;
-  reb: number;
-  ast: number;
-  stl: number;
-  blk: number;
-  tov: number;
-  fgm: number;
-  fga: number;
-  fg3m: number;
-  fg3a: number;
-  plusMinus: number;
+// --- PBPStats player data types ---
+
+interface PbpStatsHeader {
+  field: string;
+  label: string;
 }
 
-function parsePlayerRow(p: unknown): PlayerRow {
-  return {
-    name: str(p, "ShortName") || str(p, "Name"),
-    minutes: str(p, "MinutesMMSS") || str(p, "Minutes"),
-    pts: num(p, "Points"),
-    reb: num(p, "Rebounds"),
-    ast: num(p, "Assists"),
-    stl: num(p, "Steals"),
-    blk: num(p, "Blocks"),
-    tov: num(p, "Turnovers"),
-    fgm: num(p, "FGM"),
-    fga: num(p, "FGA"),
-    fg3m: num(p, "FG3M"),
-    fg3a: num(p, "FG3A"),
-    plusMinus: num(p, "PlusMinus"),
-  };
+interface PbpStatsStatRow {
+  stat: string;
+  [playerId: string]: string | number;
+}
+
+interface LivePlayer {
+  nbaId: string;
+  name: string;
+  isOnCourt: boolean;
+  minutes: string;
+  pts: number;
+  fg2: string;
+  fg3: string;
+  ft: string;
+  efg: number;
+  ts: number;
+  usage: number;
+  assistPts: number;
+  fouls: number;
+  shotQuality: number;
+}
+
+function getStatFromRows(rows: PbpStatsStatRow[], statName: string, playerId: string): string | number {
+  const row = rows.find((r) => r.stat === statName);
+  return row ? (row[playerId] ?? 0) : 0;
+}
+
+function parseLivePlayers(headers: PbpStatsHeader[], rows: PbpStatsStatRow[]): LivePlayer[] {
+  return headers
+    .filter((h) => h.field !== "stat")
+    .map((h) => {
+      const id = h.field;
+      const isOnCourt = h.label.endsWith("*");
+      const name = isOnCourt ? h.label.slice(0, -1) : h.label;
+
+      const minutesRaw = getStatFromRows(rows, "Minutes", id);
+      const minutes = typeof minutesRaw === "string" ? minutesRaw : String(minutesRaw);
+
+      return {
+        nbaId: id,
+        name,
+        isOnCourt,
+        minutes,
+        pts: Number(getStatFromRows(rows, "Points", id)) || 0,
+        fg2: String(getStatFromRows(rows, "2pt FG%", id) || "0 (0/0)"),
+        fg3: String(getStatFromRows(rows, "3pt FG%", id) || "0 (0/0)"),
+        ft: String(getStatFromRows(rows, "FT%", id) || "0 (0/0)"),
+        efg: Number(getStatFromRows(rows, "eFG%", id)) || 0,
+        ts: Number(getStatFromRows(rows, "TS%", id)) || 0,
+        usage: Number(getStatFromRows(rows, "Usage", id)) || 0,
+        assistPts: Number(getStatFromRows(rows, "Assist Points", id)) || 0,
+        fouls: Number(getStatFromRows(rows, "Fouls", id)) || 0,
+        shotQuality: Number(getStatFromRows(rows, "Shot Quality", id)) || 0,
+      };
+    });
+}
+
+/** Extract just the (makes/attempts) part from PBPStats format like "0.5 (2/4)" */
+function fgShort(raw: string): string {
+  const match = raw.match(/\(([^)]+)\)/);
+  return match ? match[1] : raw;
 }
 
 interface PlayerTableProps {
   label: string;
   abbr: string;
-  players: unknown[];
+  players: LivePlayer[];
+  playersByNbaId: Map<string, Player>;
 }
 
-function PlayerTable({ label, abbr, players }: PlayerTableProps) {
+function PlayerTable({ label, abbr, players, playersByNbaId }: PlayerTableProps) {
   const logo = teamLogoUrl(abbr);
-  const rows = players.map(parsePlayerRow);
   const { t } = useTranslation();
+
+  if (players.length === 0) return null;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/40">
@@ -158,46 +199,78 @@ function PlayerTable({ label, abbr, players }: PlayerTableProps) {
             <th className="px-4 py-2 text-left font-medium">{t("player")}</th>
             <th className="px-2 py-2 text-right font-medium">MIN</th>
             <th className="px-2 py-2 text-right font-medium">PTS</th>
-            <th className="px-2 py-2 text-right font-medium">REB</th>
-            <th className="px-2 py-2 text-right font-medium">AST</th>
             <th className="px-2 py-2 text-right font-medium">FG</th>
             <th className="px-2 py-2 text-right font-medium">3P</th>
-            <th className="px-2 py-2 text-right font-medium">STL</th>
-            <th className="px-2 py-2 text-right font-medium">BLK</th>
-            <th className="px-2 py-2 text-right font-medium">TOV</th>
-            <th className="px-2 py-2 text-right font-medium">+/-</th>
+            <th className="px-2 py-2 text-right font-medium">FT</th>
+            <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">eFG%</th>
+            <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">TS%</th>
+            <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">USG%</th>
+            <th className="px-2 py-2 text-right font-medium">AST</th>
+            <th className="px-2 py-2 text-right font-medium">PF</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={i} className="border-t border-gray-100 text-gray-600 hover:bg-gray-50 dark:border-gray-700/50 dark:text-gray-300 dark:hover:bg-gray-700/30">
-              <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{row.name}</td>
-              <td className="px-2 py-2 text-right text-gray-500 dark:text-gray-400">{row.minutes}</td>
-              <td className="px-2 py-2 text-right font-semibold text-gray-900 dark:text-white">{row.pts}</td>
-              <td className="px-2 py-2 text-right">{row.reb}</td>
-              <td className="px-2 py-2 text-right">{row.ast}</td>
-              <td className="px-2 py-2 text-right">
-                {row.fgm}/{row.fga}
-              </td>
-              <td className="px-2 py-2 text-right">
-                {row.fg3m}/{row.fg3a}
-              </td>
-              <td className="px-2 py-2 text-right">{row.stl}</td>
-              <td className="px-2 py-2 text-right">{row.blk}</td>
-              <td className="px-2 py-2 text-right">{row.tov}</td>
-              <td
-                className={`px-2 py-2 text-right font-medium ${
-                  row.plusMinus > 0
-                    ? "text-green-400"
-                    : row.plusMinus < 0
-                      ? "text-red-400"
-                      : "text-gray-400"
+          {players.map((p) => {
+            const dbPlayer = playersByNbaId.get(p.nbaId);
+            const headshotUrl = `${NBA_CDN_BASE_URL}/${p.nbaId}.png`;
+            const playerHref = dbPlayer ? `/players/${p.nbaId}` : undefined;
+
+            const nameContent = (
+              <div className="flex items-center gap-2">
+                <img
+                  src={headshotUrl}
+                  alt={p.name}
+                  className="h-6 w-6 rounded-full bg-gray-200 object-cover dark:bg-gray-700"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                <div className="flex items-center gap-1">
+                  <span className={p.isOnCourt ? "font-semibold text-gray-900 dark:text-white" : "text-gray-500 dark:text-gray-400"}>
+                    {p.name}
+                  </span>
+                  {p.isOnCourt && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400" title="En pista" />
+                  )}
+                </div>
+              </div>
+            );
+
+            return (
+              <tr
+                key={p.nbaId}
+                className={`border-t border-gray-100 text-gray-600 hover:bg-gray-50 dark:border-gray-700/50 dark:text-gray-300 dark:hover:bg-gray-700/30 ${
+                  !p.isOnCourt ? "opacity-60" : ""
                 }`}
               >
-                {row.plusMinus > 0 ? `+${row.plusMinus}` : row.plusMinus}
-              </td>
-            </tr>
-          ))}
+                <td className="whitespace-nowrap px-4 py-2">
+                  {playerHref ? (
+                    <a href={playerHref} className="transition-colors hover:text-orange-400">
+                      {nameContent}
+                    </a>
+                  ) : (
+                    nameContent
+                  )}
+                </td>
+                <td className="px-2 py-2 text-right text-gray-500 dark:text-gray-400">{p.minutes}</td>
+                <td className="px-2 py-2 text-right font-semibold text-gray-900 dark:text-white">{p.pts}</td>
+                <td className="px-2 py-2 text-right">{fgShort(p.fg2)}</td>
+                <td className="px-2 py-2 text-right">{fgShort(p.fg3)}</td>
+                <td className="px-2 py-2 text-right">{fgShort(p.ft)}</td>
+                <td className="hidden px-2 py-2 text-right sm:table-cell">
+                  {p.efg > 0 ? (p.efg * 100).toFixed(1) : "—"}
+                </td>
+                <td className="hidden px-2 py-2 text-right sm:table-cell">
+                  {p.ts > 0 ? (p.ts * 100).toFixed(1) : "—"}
+                </td>
+                <td className="hidden px-2 py-2 text-right sm:table-cell">
+                  {p.usage > 0 ? p.usage.toFixed(1) : "—"}
+                </td>
+                <td className="px-2 py-2 text-right">{p.assistPts}</td>
+                <td className="px-2 py-2 text-right">{p.fouls}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -232,6 +305,7 @@ interface LiveGameViewProps {
 
 export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const { data: games } = useTodaysGames();
+  const { data: allPlayers } = useAllPlayers();
   const { t } = useTranslation();
   const gameInfo = games?.find((g) => g.gameid === gameId);
 
@@ -259,17 +333,50 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
       }
     | undefined;
 
+  const awayTeamStats = teamGameData?.Away?.FullGame ?? {};
+  const homeTeamStats = teamGameData?.Home?.FullGame ?? {};
+
+  // Use game_info from detail endpoints for more accurate/synced scores
+  const detailGameInfo = (playerData?.game_data as { game_info?: { home_score?: number; visitor_score?: number } } | undefined)?.game_info;
+  const homeScore = detailGameInfo?.home_score ?? home.score;
+  const awayScore = detailGameInfo?.visitor_score ?? away.score;
+
+  // Player data from PBPStats (wide-format: stat rows x player ID columns)
   const playerGameData = playerData?.game_data as
     | {
-        Away?: { FullGame?: unknown[] };
-        Home?: { FullGame?: unknown[] };
+        home_rows?: PbpStatsStatRow[];
+        visitor_rows?: PbpStatsStatRow[];
+        home_headers?: PbpStatsHeader[];
+        visitor_headers?: PbpStatsHeader[];
       }
     | undefined;
 
-  const awayTeamStats = teamGameData?.Away?.FullGame ?? {};
-  const homeTeamStats = teamGameData?.Home?.FullGame ?? {};
-  const awayPlayers = playerGameData?.Away?.FullGame ?? [];
-  const homePlayers = playerGameData?.Home?.FullGame ?? [];
+  const homePlayers = useMemo(
+    () =>
+      playerGameData?.home_headers && playerGameData?.home_rows
+        ? parseLivePlayers(playerGameData.home_headers, playerGameData.home_rows)
+        : [],
+    [playerGameData?.home_headers, playerGameData?.home_rows],
+  );
+
+  const awayPlayers = useMemo(
+    () =>
+      playerGameData?.visitor_headers && playerGameData?.visitor_rows
+        ? parseLivePlayers(playerGameData.visitor_headers, playerGameData.visitor_rows)
+        : [],
+    [playerGameData?.visitor_headers, playerGameData?.visitor_rows],
+  );
+
+  // Map nba_id (string) -> Player for cross-referencing with Supabase
+  const playersByNbaId = useMemo(() => {
+    const map = new Map<string, Player>();
+    if (allPlayers) {
+      for (const p of allPlayers) {
+        map.set(String(p.nba_id), p);
+      }
+    }
+    return map;
+  }, [allPlayers]);
 
   // Game flow chart data
   const flowGameData = flowData?.game_data as
@@ -313,7 +420,7 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
               />
             )}
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
-            <span className="text-5xl font-black text-gray-900 dark:text-white">{away.score}</span>
+            <span className="text-5xl font-black text-gray-900 dark:text-white">{awayScore}</span>
           </div>
 
           <div className="text-center">
@@ -338,7 +445,7 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
               />
             )}
             <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
-            <span className="text-5xl font-black text-gray-900 dark:text-white">{home.score}</span>
+            <span className="text-5xl font-black text-gray-900 dark:text-white">{homeScore}</span>
           </div>
         </div>
       </div>
@@ -363,13 +470,13 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
               <TeamStatsBox
                 label={t("away")}
                 abbr={away.abbr}
-                score={away.score}
+                score={awayScore}
                 stats={awayTeamStats}
               />
               <TeamStatsBox
                 label={t("home")}
                 abbr={home.abbr}
-                score={home.score}
+                score={homeScore}
                 stats={homeTeamStats}
               />
             </div>
@@ -377,10 +484,10 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
 
           {/* Player boxscore */}
           {awayPlayers.length > 0 && (
-            <PlayerTable label={away.abbr} abbr={away.abbr} players={awayPlayers} />
+            <PlayerTable label={away.abbr} abbr={away.abbr} players={awayPlayers} playersByNbaId={playersByNbaId} />
           )}
           {homePlayers.length > 0 && (
-            <PlayerTable label={home.abbr} abbr={home.abbr} players={homePlayers} />
+            <PlayerTable label={home.abbr} abbr={home.abbr} players={homePlayers} playersByNbaId={playersByNbaId} />
           )}
         </>
       )}

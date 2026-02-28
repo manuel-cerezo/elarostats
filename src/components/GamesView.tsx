@@ -109,6 +109,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
   const hasStarted = game.homeScore > 0 || game.awayScore > 0;
   const homeWins = hasStarted && game.homeScore > game.awayScore;
   const awayWins = hasStarted && game.awayScore > game.homeScore;
+  const isTied = hasStarted && game.homeScore === game.awayScore;
 
   const homeTeam = teamByAbbr.get(game.homeAbbr);
   const awayTeam = teamByAbbr.get(game.awayAbbr);
@@ -155,7 +156,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
         </div>
         {gameInfo && gameInfo.home_win_probability != null && (
           <span className="text-xs text-gray-600">
-            WP: {gameInfo.home_win_probability}% – {gameInfo.visitor_win_probability}%
+            WP: {gameInfo.visitor_win_probability}% – {gameInfo.home_win_probability}%
           </span>
         )}
       </a>
@@ -166,7 +167,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           {/* Away team */}
           <a
             href={awayId ? `/teams/${awayId}` : "#"}
-            className={`flex items-center justify-end gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${hasStarted && !awayWins ? "opacity-50" : ""}`}
+            className={`flex items-center justify-end gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${hasStarted && !awayWins && !isTied ? "opacity-50" : ""}`}
           >
             <div className="text-right">
               <div className={`font-semibold ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-300"}`}>
@@ -202,7 +203,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           {/* Home team */}
           <a
             href={homeId ? `/teams/${homeId}` : "#"}
-            className={`flex items-center justify-start gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${hasStarted && !homeWins ? "opacity-50" : ""}`}
+            className={`flex items-center justify-start gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${hasStarted && !homeWins && !isTied ? "opacity-50" : ""}`}
           >
             {homeId && (
               <img
