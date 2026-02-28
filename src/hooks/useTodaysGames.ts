@@ -14,6 +14,11 @@ export function useTodaysGames() {
       return parseTodaysGames(response);
     },
     staleTime: REFETCH_INTERVAL,
-    refetchInterval: REFETCH_INTERVAL,
+    refetchInterval: (query) => {
+      const data = query.state.data as ParsedGame[] | undefined;
+      // Stop polling once all games of the day are finished
+      if (data?.length && data.every((g) => g.isFinal)) return false;
+      return REFETCH_INTERVAL;
+    },
   });
 }

@@ -86,7 +86,13 @@ export function useLiveGamesData(enabled = true) {
     queryKey: ["live-games-pbp"],
     queryFn: fetchLiveGames,
     staleTime: REFETCH_INTERVAL,
-    refetchInterval: enabled ? REFETCH_INTERVAL : false,
+    refetchInterval: (query) => {
+      if (!enabled) return false;
+      const data = query.state.data as ParsedLiveGame[] | undefined;
+      // Stop polling once all games of the day are finished
+      if (data?.length && data.every((g) => g.isFinal)) return false;
+      return REFETCH_INTERVAL;
+    },
     enabled,
   });
 }
