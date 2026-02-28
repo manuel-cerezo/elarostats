@@ -6,9 +6,10 @@ export const TODAYS_GAMES_QUERY_KEY = ["todays-games"] as const;
 
 const REFETCH_INTERVAL = 30_000; // 30 seconds
 
-export function useTodaysGames() {
+export function useTodaysGames({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<ParsedGame[]>({
     queryKey: TODAYS_GAMES_QUERY_KEY,
+    enabled,
     queryFn: async () => {
       const response = await fetchTodaysGames();
       return parseTodaysGames(response);

@@ -399,10 +399,8 @@ interface LiveGameViewProps {
 }
 
 export default function LiveGameView({ gameId }: LiveGameViewProps) {
-  const { data: games } = useTodaysGames();
   const { data: allPlayers } = useAllPlayers();
   const { t, locale } = useTranslation();
-  const gameInfo = games?.find((g) => g.gameid === gameId);
 
   // --- Supabase cache check (completed games) ---
   // Always runs first; fast primary-key lookup. If data is found here, PBPStats
@@ -410,6 +408,11 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const completedGame = useCompletedGame(gameId);
   const isFromSupabase = completedGame.isFetched && !!completedGame.data;
   const shouldQueryPBP = completedGame.isFetched && !completedGame.data;
+
+  // Only fetch the full games list when the game isn't in Supabase (live games).
+  // This avoids a redundant PBPStats call on completed-game pages.
+  const { data: games } = useTodaysGames({ enabled: shouldQueryPBP });
+  const gameInfo = games?.find((g) => g.gameid === gameId);
 
   const homeRaw = gameInfo ? `${gameInfo.homeTeam} ${gameInfo.homeScore}` : "";
   const awayRaw = gameInfo ? `${gameInfo.awayTeam} ${gameInfo.awayScore}` : "";

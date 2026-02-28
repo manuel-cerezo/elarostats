@@ -69,15 +69,45 @@ async function fetchTodaysGames(): Promise<TodaysGamesResponse> {
   return res.json() as Promise<TodaysGamesResponse>;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Retry a fetch up to maxRetries times on transient server errors (5xx). */
+async function fetchWithRetry(
+  url: string,
+  label: string,
+  maxRetries = 3,
+  delaysMs = [10_000, 30_000, 60_000],
+): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url);
+    if (res.ok) return res;
+
+    const isTransient = res.status >= 500;
+    const isLastAttempt = attempt === maxRetries;
+
+    if (isTransient && !isLastAttempt) {
+      const delay = delaysMs[attempt] ?? 60_000;
+      console.warn(
+        `  ⚠ ${label}: ${res.status} ${res.statusText} — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${maxRetries})…`,
+      );
+      await sleep(delay);
+      continue;
+    }
+
+    throw new Error(`Failed to fetch ${label}: ${res.status} ${res.statusText}`);
+  }
+  // unreachable, but satisfies TypeScript
+  throw new Error(`Exhausted retries for ${label}`);
+}
+
 async function fetchGameResult(
   gameId: string,
   resultType: "team" | "player" | "game-flow",
 ): Promise<LiveGameResponse> {
   const url = `${PBPSTATS_BASE}/live/game/${gameId}/${resultType}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${resultType} for ${gameId}: ${res.status} ${res.statusText}`);
-  }
+  const res = await fetchWithRetry(url, `${resultType} for ${gameId}`);
   return res.json() as Promise<LiveGameResponse>;
 }
 

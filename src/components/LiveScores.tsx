@@ -110,14 +110,14 @@ function GameCard({ game }: { game: ParsedLiveGame }) {
 // --- Main ---
 
 export default function LiveScores() {
-  const [hidden, setHidden] = useState(false);
+  // Initialise synchronously so the hook is disabled before the first render
+  // on /games pages — avoids a spurious PBPStats fetch on initial mount.
+  const [hidden, setHidden] = useState(() => window.location.pathname.startsWith("/games"));
 
-  // Hide on /games page to avoid redundancy with the full games view
   useEffect(() => {
     function checkPath() {
       setHidden(window.location.pathname.startsWith("/games"));
     }
-    checkPath();
     document.addEventListener("astro:page-load", checkPath);
     return () => document.removeEventListener("astro:page-load", checkPath);
   }, []);
