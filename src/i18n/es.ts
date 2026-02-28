@@ -63,6 +63,16 @@ export const es = {
   turnovers: "Pérdidas",
   atRimPct: "% en aro",
 
+  // Récord de equipos
+  record: "Balance",
+  homeRecord: "Local",
+  awayRecord: "Visitante",
+  last10: "Últ. 10",
+  streak: "Racha",
+  conference: "Conferencia",
+  division: "División",
+  recordTitle: "Balance de victorias-derrotas",
+
   // Tooltips de estadísticas de equipos
   netRtgTitle: "Net Rating (Off - Def por 100 posesiones)",
   offRtgTitle: "Offensive Rating (puntos por 100 posesiones)",

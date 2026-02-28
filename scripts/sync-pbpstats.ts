@@ -4,6 +4,9 @@
  * Fetches NBA player & team totals from the pbpstats API and upserts them
  * into Supabase tables (pbp_player_totals, pbp_team_totals).
  *
+ * Also fetches season games to compute W-L records, home/away splits,
+ * last-10 record, and current streak for each team.
+ *
  *   npm run sync:pbpstats
  *
  * The pbpstats /get-totals endpoint returns ~500 players (2.8 MB) and 30
@@ -30,11 +33,12 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const PBPSTATS_BASE = "https://api.pbpstats.com/get-totals/nba";
+const PBPSTATS_GAMES = "https://api.pbpstats.com/get-games/nba";
 const DEFAULT_SEASON = "2025-26";
 const DEFAULT_SEASON_TYPE = "Regular+Season";
 
 // ---------------------------------------------------------------------------
-// Fetch from pbpstats
+// Types
 // ---------------------------------------------------------------------------
 
 interface PbpRow {
@@ -64,6 +68,7 @@ interface PbpRow {
   EfgPct?: number;
   TsPct?: number;
   Usage?: number;
+  Pace?: number;
   AtRimFGM?: number;
   AtRimFGA?: number;
   ShortMidRangeFGM?: number;
@@ -77,6 +82,37 @@ interface PbpRow {
 interface PbpResponse {
   multi_row_table_data: PbpRow[];
 }
+
+interface PbpGame {
+  GameId: string;
+  Date: string;
+  HomeTeamId: number;
+  AwayTeamId: number;
+  HomePoints: number;
+  AwayPoints: number;
+  [key: string]: unknown;
+}
+
+interface PbpGamesResponse {
+  results: PbpGame[];
+}
+
+interface TeamRecord {
+  wins: number;
+  losses: number;
+  winPct: number;
+  homeWins: number;
+  homeLosses: number;
+  awayWins: number;
+  awayLosses: number;
+  last10Wins: number;
+  last10Losses: number;
+  streak: string;
+}
+
+// ---------------------------------------------------------------------------
+// Fetch from pbpstats
+// ---------------------------------------------------------------------------
 
 async function fetchTotals(type: "Player" | "Team", season: string, seasonType: string): Promise<PbpRow[]> {
   const url = `${PBPSTATS_BASE}?Season=${season}&SeasonType=${seasonType}&Type=${type}`;
@@ -93,6 +129,93 @@ async function fetchTotals(type: "Player" | "Team", season: string, seasonType: 
 
   console.log(`  Got ${data.multi_row_table_data.length} rows`);
   return data.multi_row_table_data;
+}
+
+async function fetchGames(season: string, seasonType: string): Promise<PbpGame[]> {
+  const url = `${PBPSTATS_GAMES}?Season=${season}&SeasonType=${seasonType}`;
+  console.log(`Fetching games from pbpstats…`);
+  console.log(`  URL: ${url}`);
+
+  const res = await fetch(url);
+  const data: PbpGamesResponse = await res.json();
+
+  if (!data.results?.length) {
+    console.warn(`  No games returned (status ${res.status}) — W-L will be 0-0`);
+    return [];
+  }
+
+  console.log(`  Got ${data.results.length} games`);
+  return data.results;
+}
+
+// ---------------------------------------------------------------------------
+// Compute W-L records from game results
+// ---------------------------------------------------------------------------
+
+function computeTeamRecords(games: PbpGame[]): Map<number, TeamRecord> {
+  // Sort games by date ascending for streak / last-10 calculation
+  const sorted = [...games].sort((a, b) => a.Date.localeCompare(b.Date));
+
+  // Track per-team game results in chronological order
+  const teamGames = new Map<number, Array<{ won: boolean; isHome: boolean }>>();
+
+  for (const game of sorted) {
+    // Skip games that haven't been played yet (no scores)
+    if (game.HomePoints === 0 && game.AwayPoints === 0) continue;
+
+    const homeId = Number(game.HomeTeamId);
+    const awayId = Number(game.AwayTeamId);
+    const homeWon = game.HomePoints > game.AwayPoints;
+
+    if (!teamGames.has(homeId)) teamGames.set(homeId, []);
+    if (!teamGames.has(awayId)) teamGames.set(awayId, []);
+
+    teamGames.get(homeId)!.push({ won: homeWon, isHome: true });
+    teamGames.get(awayId)!.push({ won: !homeWon, isHome: false });
+  }
+
+  const records = new Map<number, TeamRecord>();
+
+  for (const [teamId, results] of teamGames) {
+    const wins = results.filter((r) => r.won).length;
+    const losses = results.filter((r) => !r.won).length;
+    const homeWins = results.filter((r) => r.isHome && r.won).length;
+    const homeLosses = results.filter((r) => r.isHome && !r.won).length;
+    const awayWins = results.filter((r) => !r.isHome && r.won).length;
+    const awayLosses = results.filter((r) => !r.isHome && !r.won).length;
+
+    // Last 10 games
+    const last10 = results.slice(-10);
+    const last10Wins = last10.filter((r) => r.won).length;
+    const last10Losses = last10.filter((r) => !r.won).length;
+
+    // Current streak
+    let streakCount = 0;
+    const streakType =
+      results.length > 0 ? (results[results.length - 1].won ? "W" : "L") : "W";
+    for (let i = results.length - 1; i >= 0; i--) {
+      if ((results[i].won && streakType === "W") || (!results[i].won && streakType === "L")) {
+        streakCount++;
+      } else {
+        break;
+      }
+    }
+
+    records.set(teamId, {
+      wins,
+      losses,
+      winPct: wins + losses > 0 ? wins / (wins + losses) : 0,
+      homeWins,
+      homeLosses,
+      awayWins,
+      awayLosses,
+      last10Wins,
+      last10Losses,
+      streak: `${streakType}${streakCount}`,
+    });
+  }
+
+  return records;
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +255,7 @@ function mapPlayerRow(p: PbpRow, season: string, seasonType: string) {
   };
 }
 
-function mapTeamRow(t: PbpRow, season: string, seasonType: string) {
+function mapTeamRow(t: PbpRow, season: string, seasonType: string, record?: TeamRecord) {
   return {
     entity_id: parseInt(t.EntityId, 10),
     season,
@@ -167,6 +290,18 @@ function mapTeamRow(t: PbpRow, season: string, seasonType: string) {
     efg_pct: t.EfgPct ?? null,
     ts_pct: t.TsPct ?? null,
     opponent_points: t.OpponentPoints ?? null,
+    pace: typeof t.Pace === "number" ? t.Pace : null,
+    // W-L record fields
+    wins: record?.wins ?? 0,
+    losses: record?.losses ?? 0,
+    win_pct: record?.winPct ?? null,
+    home_wins: record?.homeWins ?? 0,
+    home_losses: record?.homeLosses ?? 0,
+    away_wins: record?.awayWins ?? 0,
+    away_losses: record?.awayLosses ?? 0,
+    last_10_wins: record?.last10Wins ?? 0,
+    last_10_losses: record?.last10Losses ?? 0,
+    streak: record?.streak ?? null,
     raw_data: t,
     synced_at: new Date().toISOString(),
   };
@@ -213,9 +348,18 @@ async function main() {
     await upsertBatch("pbp_player_totals", playerRows, "entity_id,season,season_type");
     console.log(`\nPlayers sync complete — ${players.length} rows.\n`);
 
-    // Teams
+    // Games (for W-L computation)
+    const games = await fetchGames(season, seasonType);
+    const records = computeTeamRecords(games);
+    console.log(`\nComputed records for ${records.size} teams.\n`);
+
+    // Teams (merged with W-L records)
     const teams = await fetchTotals("Team", season, seasonType);
-    const teamRows = teams.map((t) => mapTeamRow(t, season, seasonType));
+    const teamRows = teams.map((t) => {
+      const teamId = parseInt(t.EntityId, 10);
+      const record = records.get(teamId);
+      return mapTeamRow(t, season, seasonType, record);
+    });
     await upsertBatch("pbp_team_totals", teamRows, "entity_id,season,season_type");
     console.log(`\nTeams sync complete — ${teams.length} rows.\n`);
 
