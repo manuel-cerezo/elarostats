@@ -17,6 +17,11 @@ function teamLogoUrl(abbr: string): string | undefined {
   return id ? `/teams/${id}.svg` : undefined;
 }
 
+function teamPageUrl(abbr: string): string | undefined {
+  const id = abbrToTeamId.get(abbr.toUpperCase());
+  return id ? `/teams/${id}` : undefined;
+}
+
 function parseTeamField(field: string): { abbr: string; score: number } {
   const parts = field.trim().split(" ");
   return { abbr: parts[0] ?? "", score: parseInt(parts[1] ?? "0", 10) };
@@ -29,12 +34,6 @@ function num(data: unknown, key: string): number {
   return typeof val === "number" ? val : 0;
 }
 
-function str(data: unknown, key: string): string {
-  if (!data || typeof data !== "object") return "";
-  const val = (data as Record<string, unknown>)[key];
-  return typeof val === "string" ? val : "";
-}
-
 interface TeamStatsBoxProps {
   label: string;
   abbr: string;
@@ -44,6 +43,7 @@ interface TeamStatsBoxProps {
 
 function TeamStatsBox({ label, abbr, score, stats }: TeamStatsBoxProps) {
   const logo = teamLogoUrl(abbr);
+  const teamUrl = teamPageUrl(abbr);
   const fgm = num(stats, "FGM");
   const fga = num(stats, "FGA");
   const fg3m = num(stats, "FG3M");
@@ -62,7 +62,13 @@ function TeamStatsBox({ label, abbr, score, stats }: TeamStatsBoxProps) {
         {logo && <img src={logo} alt={abbr} className="h-10 w-10 object-contain" />}
         <span className="text-4xl font-black text-gray-900 dark:text-white">{score}</span>
       </div>
-      <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{abbr}</p>
+      {teamUrl ? (
+        <a href={teamUrl} className="text-sm font-semibold text-gray-600 transition-colors hover:text-orange-400 dark:text-gray-300">
+          {abbr}
+        </a>
+      ) : (
+        <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{abbr}</p>
+      )}
       {fga > 0 && (
         <div className="w-full space-y-1 border-t border-gray-200 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
           <div className="flex justify-between">
@@ -122,6 +128,7 @@ interface LivePlayer {
   name: string;
   isOnCourt: boolean;
   minutes: string;
+  minutesNum: number; // numeric value for sorting
   pts: number;
   fg2: string;
   fg3: string;
@@ -131,12 +138,16 @@ interface LivePlayer {
   usage: number;
   assistPts: number;
   fouls: number;
-  shotQuality: number;
 }
 
 function getStatFromRows(rows: PbpStatsStatRow[], statName: string, playerId: string): string | number {
   const row = rows.find((r) => r.stat === statName);
   return row ? (row[playerId] ?? 0) : 0;
+}
+
+function parseMinutes(minutes: string): number {
+  const [m, s] = minutes.split(":");
+  return parseInt(m ?? "0", 10) + parseInt(s ?? "0", 10) / 60;
 }
 
 function parseLivePlayers(headers: PbpStatsHeader[], rows: PbpStatsStatRow[]): LivePlayer[] {
@@ -155,6 +166,7 @@ function parseLivePlayers(headers: PbpStatsHeader[], rows: PbpStatsStatRow[]): L
         name,
         isOnCourt,
         minutes,
+        minutesNum: parseMinutes(minutes),
         pts: Number(getStatFromRows(rows, "Points", id)) || 0,
         fg2: String(getStatFromRows(rows, "2pt FG%", id) || "0 (0/0)"),
         fg3: String(getStatFromRows(rows, "3pt FG%", id) || "0 (0/0)"),
@@ -164,7 +176,6 @@ function parseLivePlayers(headers: PbpStatsHeader[], rows: PbpStatsStatRow[]): L
         usage: Number(getStatFromRows(rows, "Usage", id)) || 0,
         assistPts: Number(getStatFromRows(rows, "Assist Points", id)) || 0,
         fouls: Number(getStatFromRows(rows, "Fouls", id)) || 0,
-        shotQuality: Number(getStatFromRows(rows, "Shot Quality", id)) || 0,
       };
     });
 }
@@ -173,6 +184,22 @@ function parseLivePlayers(headers: PbpStatsHeader[], rows: PbpStatsStatRow[]): L
 function fgShort(raw: string): string {
   const match = raw.match(/\(([^)]+)\)/);
   return match ? match[1] : raw;
+}
+
+// --- Sortable column types ---
+
+type SortCol = "minutes" | "pts" | "efg" | "ts" | "usage" | "assistPts" | "fouls";
+type SortDir = "asc" | "desc";
+
+// \uFE0E = Unicode Variation Selector-15: forces text (non-emoji) rendering
+function SortIndicator({ col, active, dir }: { col: SortCol; active: SortCol; dir: SortDir }) {
+  if (col !== active)
+    return <span className="ml-0.5 opacity-30">{"\u2195\uFE0E"}</span>;
+  return (
+    <span className="ml-0.5 text-orange-400">
+      {dir === "desc" ? "\u2193\uFE0E" : "\u2191\uFE0E"}
+    </span>
+  );
 }
 
 interface PlayerTableProps {
@@ -184,34 +211,85 @@ interface PlayerTableProps {
 
 function PlayerTable({ label, abbr, players, playersByNbaId }: PlayerTableProps) {
   const logo = teamLogoUrl(abbr);
+  const teamUrl = teamPageUrl(abbr);
   const { t } = useTranslation();
+  const [sortCol, setSortCol] = useState<SortCol>("pts");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const sortedPlayers = useMemo(() => {
+    return [...players].sort((a, b) => {
+      let aVal: number;
+      let bVal: number;
+      switch (sortCol) {
+        case "minutes":   aVal = a.minutesNum; bVal = b.minutesNum; break;
+        case "pts":       aVal = a.pts;        bVal = b.pts;        break;
+        case "efg":       aVal = a.efg;        bVal = b.efg;        break;
+        case "ts":        aVal = a.ts;         bVal = b.ts;         break;
+        case "usage":     aVal = a.usage;      bVal = b.usage;      break;
+        case "assistPts": aVal = a.assistPts;  bVal = b.assistPts;  break;
+        case "fouls":     aVal = a.fouls;      bVal = b.fouls;      break;
+        default:          aVal = a.pts;        bVal = b.pts;
+      }
+      return sortDir === "desc" ? bVal - aVal : aVal - bVal;
+    });
+  }, [players, sortCol, sortDir]);
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    else { setSortCol(col); setSortDir("desc"); }
+  }
+
+  const thSort = "cursor-pointer select-none px-2 py-2 text-right font-medium hover:text-orange-400 transition-colors";
 
   if (players.length === 0) return null;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/40">
       <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-        {logo && <img src={logo} alt={abbr} className="h-5 w-5 object-contain" />}
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">{label}</span>
+        {teamUrl ? (
+          <a href={teamUrl} className="flex items-center gap-2 transition-opacity hover:opacity-75">
+            {logo && <img src={logo} alt={abbr} className="h-5 w-5 object-contain" />}
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">{label}</span>
+          </a>
+        ) : (
+          <>
+            {logo && <img src={logo} alt={abbr} className="h-5 w-5 object-contain" />}
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">{label}</span>
+          </>
+        )}
       </div>
       <table className="w-full text-xs">
         <thead>
           <tr className="text-gray-500">
             <th className="px-4 py-2 text-left font-medium">{t("player")}</th>
-            <th className="px-2 py-2 text-right font-medium">MIN</th>
-            <th className="px-2 py-2 text-right font-medium">PTS</th>
+            <th className={thSort} onClick={() => handleSort("minutes")}>
+              MIN <SortIndicator col="minutes" active={sortCol} dir={sortDir} />
+            </th>
+            <th className={thSort} onClick={() => handleSort("pts")}>
+              PTS <SortIndicator col="pts" active={sortCol} dir={sortDir} />
+            </th>
             <th className="px-2 py-2 text-right font-medium">FG</th>
             <th className="px-2 py-2 text-right font-medium">3P</th>
             <th className="px-2 py-2 text-right font-medium">FT</th>
-            <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">eFG%</th>
-            <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">TS%</th>
-            <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">USG%</th>
-            <th className="px-2 py-2 text-right font-medium">AST</th>
-            <th className="px-2 py-2 text-right font-medium">PF</th>
+            <th className={`hidden sm:table-cell ${thSort}`} onClick={() => handleSort("efg")}>
+              eFG% <SortIndicator col="efg" active={sortCol} dir={sortDir} />
+            </th>
+            <th className={`hidden sm:table-cell ${thSort}`} onClick={() => handleSort("ts")}>
+              TS% <SortIndicator col="ts" active={sortCol} dir={sortDir} />
+            </th>
+            <th className={`hidden sm:table-cell ${thSort}`} onClick={() => handleSort("usage")}>
+              USG% <SortIndicator col="usage" active={sortCol} dir={sortDir} />
+            </th>
+            <th className={thSort} onClick={() => handleSort("assistPts")}>
+              AST <SortIndicator col="assistPts" active={sortCol} dir={sortDir} />
+            </th>
+            <th className={thSort} onClick={() => handleSort("fouls")}>
+              PF <SortIndicator col="fouls" active={sortCol} dir={sortDir} />
+            </th>
           </tr>
         </thead>
         <tbody>
-          {players.map((p) => {
+          {sortedPlayers.map((p) => {
             const dbPlayer = playersByNbaId.get(p.nbaId);
             const headshotUrl = `${NBA_CDN_BASE_URL}/${p.nbaId}.png`;
             const playerHref = dbPlayer ? `/players/${p.nbaId}` : undefined;
@@ -300,6 +378,22 @@ function LastUpdated({ dataUpdatedAt }: { dataUpdatedAt: number }) {
   );
 }
 
+/** Format a YYYY-MM-DD date string for display */
+function formatGameDate(dateStr: string | null | undefined, locale: string): string | null {
+  if (!dateStr) return null;
+  try {
+    const d = new Date(`${dateStr}T12:00:00`);
+    return d.toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return null;
+  }
+}
+
 interface LiveGameViewProps {
   gameId: string;
 }
@@ -307,7 +401,7 @@ interface LiveGameViewProps {
 export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const { data: games } = useTodaysGames();
   const { data: allPlayers } = useAllPlayers();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const gameInfo = games?.find((g) => g.gameid === gameId);
 
   // --- Supabase cache check (completed games) ---
@@ -411,6 +505,22 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
         flowQuery.dataUpdatedAt ?? 0,
       );
 
+  // Game date: use stored game_date for completed games, today for live/upcoming
+  const gameDate = isFromSupabase
+    ? formatGameDate(completedGame.data!.game_date, locale)
+    : gameInfo
+      ? new Date().toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : null;
+
+  // Team page URLs
+  const homeTeamUrl = teamPageUrl(home.abbr);
+  const awayTeamUrl = teamPageUrl(away.abbr);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -428,17 +538,31 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
 
       {/* Scoreboard */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800/60">
+        {/* Game date */}
+        {gameDate && (
+          <p className="mb-4 text-center text-xs capitalize text-gray-400 dark:text-gray-500">
+            {gameDate}
+          </p>
+        )}
+
         <div className="flex items-center justify-center gap-8">
           {/* Away */}
           <div className="flex flex-col items-center gap-2">
-            {teamLogoUrl(away.abbr) && (
-              <img
-                src={teamLogoUrl(away.abbr)!}
-                alt={away.abbr}
-                className="h-16 w-16 object-contain"
-              />
+            {awayTeamUrl ? (
+              <a href={awayTeamUrl} className="flex flex-col items-center gap-2 transition-opacity hover:opacity-75">
+                {teamLogoUrl(away.abbr) && (
+                  <img src={teamLogoUrl(away.abbr)!} alt={away.abbr} className="h-16 w-16 object-contain" />
+                )}
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
+              </a>
+            ) : (
+              <>
+                {teamLogoUrl(away.abbr) && (
+                  <img src={teamLogoUrl(away.abbr)!} alt={away.abbr} className="h-16 w-16 object-contain" />
+                )}
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
+              </>
             )}
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
             <span className="text-5xl font-black text-gray-900 dark:text-white">{awayScore}</span>
           </div>
 
@@ -459,14 +583,21 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
 
           {/* Home */}
           <div className="flex flex-col items-center gap-2">
-            {teamLogoUrl(home.abbr) && (
-              <img
-                src={teamLogoUrl(home.abbr)!}
-                alt={home.abbr}
-                className="h-16 w-16 object-contain"
-              />
+            {homeTeamUrl ? (
+              <a href={homeTeamUrl} className="flex flex-col items-center gap-2 transition-opacity hover:opacity-75">
+                {teamLogoUrl(home.abbr) && (
+                  <img src={teamLogoUrl(home.abbr)!} alt={home.abbr} className="h-16 w-16 object-contain" />
+                )}
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
+              </a>
+            ) : (
+              <>
+                {teamLogoUrl(home.abbr) && (
+                  <img src={teamLogoUrl(home.abbr)!} alt={home.abbr} className="h-16 w-16 object-contain" />
+                )}
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
+              </>
             )}
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
             <span className="text-5xl font-black text-gray-900 dark:text-white">{homeScore}</span>
           </div>
         </div>

@@ -13,7 +13,12 @@ export function useTodaysGames() {
       const response = await fetchTodaysGames();
       return parseTodaysGames(response);
     },
-    staleTime: REFETCH_INTERVAL,
+    // When all games are final, cache forever — no need to ever refetch
+    staleTime: (query) => {
+      const data = query.state.data as ParsedGame[] | undefined;
+      if (data?.length && data.every((g) => g.isFinal)) return Infinity;
+      return REFETCH_INTERVAL;
+    },
     refetchInterval: (query) => {
       const data = query.state.data as ParsedGame[] | undefined;
       // Stop polling once all games of the day are finished

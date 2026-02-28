@@ -5,6 +5,7 @@ import {
   useLiveGamesData,
   type ParsedLiveGame,
 } from "../hooks/useLiveGamesData";
+import { useCompletedGame } from "../hooks/useCompletedGame";
 
 const PBPSTATS_BASE = "https://api.pbpstats.com";
 
@@ -73,7 +74,7 @@ function formatStatValue(value: string | number | undefined): string {
   return String(value);
 }
 
-// --- Detail hook (per-game) ---
+// --- Detail hook (per-game, PBPStats only) ---
 
 const DETAIL_REFETCH = 30_000;
 
@@ -118,15 +119,28 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
   const homeId = abbrToTeamId.get(game.homeAbbr);
   const awayId = abbrToTeamId.get(game.awayAbbr);
 
-  // Fetch detail only for started games; cache forever when the game is final
+  // For final games, check Supabase cache first to avoid PBPStats calls
+  const { data: completedGame, isFetched: completedFetched } = useCompletedGame(
+    game.gameId,
+    game.isFinal,
+  );
+  const isFromSupabase = game.isFinal && completedFetched && completedGame != null;
+
+  // Only call PBPStats if the game has started AND it's not already cached in Supabase
   const { data: detail, isLoading: detailLoading } = useGameDetail(
     game.gameId,
-    hasStarted,
+    hasStarted && !isFromSupabase,
     game.isFinal,
   );
 
-  const rows = detail?.game_data?.rows ?? [];
-  const gameInfo = detail?.game_data?.game_info;
+  // Prefer Supabase data for completed games; fall back to live PBPStats data
+  const supabaseGameData = completedGame?.team_data?.game_data as
+    | GameDetail["game_data"]
+    | undefined;
+  const rows = isFromSupabase ? (supabaseGameData?.rows ?? []) : (detail?.game_data?.rows ?? []);
+  const gameInfo = isFromSupabase ? supabaseGameData?.game_info : detail?.game_data?.game_info;
+
+  const showSkeleton = hasStarted && rows.length === 0 && (detailLoading || (game.isFinal && !completedFetched));
 
   return (
     <div
@@ -136,7 +150,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           : "border-gray-200 bg-white dark:border-gray-700/50 dark:bg-gray-900"
       }`}
     >
-      {/* Header with status */}
+      {/* Header with status + detail link icon */}
       <a
         href={`/games/live?id=${game.gameId}`}
         className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5 transition-colors hover:bg-gray-50 dark:border-gray-800/60 dark:hover:bg-gray-800/40"
@@ -156,12 +170,29 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           {!game.isLive && !game.isFinal && (
             <span className="text-sm font-semibold text-orange-400">{game.time}</span>
           )}
+          {gameInfo && gameInfo.home_win_probability != null && (
+            <span className="text-xs text-gray-400">
+              WP: {gameInfo.visitor_win_probability}% – {gameInfo.home_win_probability}%
+            </span>
+          )}
         </div>
-        {gameInfo && gameInfo.home_win_probability != null && (
-          <span className="text-xs text-gray-600">
-            WP: {gameInfo.visitor_win_probability}% – {gameInfo.home_win_probability}%
-          </span>
-        )}
+        {/* Info icon hinting there's more detail available */}
+        <span className="flex items-center gap-1 text-xs text-gray-400 transition-colors group-hover:text-orange-400 dark:text-gray-600">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        </span>
       </a>
 
       {/* Scoreboard */}
@@ -253,7 +284,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
       )}
 
       {/* Loading skeleton for stats */}
-      {hasStarted && rows.length === 0 && detailLoading && (
+      {showSkeleton && (
         <div className="border-t border-gray-100 px-4 py-3 dark:border-gray-800/40">
           <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-600">
             {t("teamStats")}

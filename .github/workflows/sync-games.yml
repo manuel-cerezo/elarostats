@@ -2,9 +2,9 @@ name: Sync Completed Games
 
 on:
   schedule:
-    # 09:30 UTC = 04:30 AM ET. NBA games end by ~04:30 UTC at the latest,
-    # so all last-night's games will be "Final" by the time this runs.
-    - cron: "30 9 * * *"
+    # 05:30 UTC = 06:30 CET (winter) / 07:30 CEST (summer).
+    # All last-night's NBA games (latest ~06:00 UTC) will be "Final" by then.
+    - cron: "30 5 * * *"
   workflow_dispatch: # permite lanzarlo manualmente desde GitHub
 
 jobs:

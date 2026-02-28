@@ -11,6 +11,7 @@ export interface CompletedGame {
   player_data: LiveGameResponse;
   game_flow_data: LiveGameResponse;
   synced_at: string;
+  game_date: string | null;
 }
 
 /**

@@ -109,6 +109,7 @@ async function syncGame(
   awayAbbr: string,
   homeScore: number,
   awayScore: number,
+  gameDate: string,
 ): Promise<void> {
   console.log(`  Fetching ${awayAbbr} @ ${homeAbbr} (${gameId})…`);
 
@@ -129,6 +130,7 @@ async function syncGame(
       player_data: playerData,
       game_flow_data: gameFlowData,
       synced_at: new Date().toISOString(),
+      game_date: gameDate,
     },
     { onConflict: "game_id" },
   );
@@ -176,6 +178,12 @@ async function main() {
 
   console.log(`Syncing ${toSync.length} new game(s) (${alreadySynced.size} already cached):\n`);
 
+  // Compute game date: the script runs at 5:30 UTC (morning after games).
+  // NBA games start in US primetime and run through early UTC the next day.
+  // Yesterday in UTC is therefore the actual game date for all final games.
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const gameDate = yesterday.toISOString().split("T")[0]; // YYYY-MM-DD
+
   // 4. Sync each game (serially to avoid hammering PBPStats)
   let synced = 0;
   let failed = 0;
@@ -185,7 +193,7 @@ async function main() {
     const away = parseTeamField(game.away);
 
     try {
-      await syncGame(game.gameid, home.abbr, away.abbr, home.score, away.score);
+      await syncGame(game.gameid, home.abbr, away.abbr, home.score, away.score, gameDate);
       synced++;
     } catch (err) {
       console.error(`  ✗ Failed to sync ${game.gameid}:`, err instanceof Error ? err.message : err);

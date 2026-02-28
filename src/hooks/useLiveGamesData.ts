@@ -85,7 +85,12 @@ export function useLiveGamesData(enabled = true) {
   return useQuery<ParsedLiveGame[]>({
     queryKey: ["live-games-pbp"],
     queryFn: fetchLiveGames,
-    staleTime: REFETCH_INTERVAL,
+    // When all games are final, cache forever — no need to ever refetch
+    staleTime: (query) => {
+      const data = query.state.data as ParsedLiveGame[] | undefined;
+      if (data?.length && data.every((g) => g.isFinal)) return Infinity;
+      return REFETCH_INTERVAL;
+    },
     refetchInterval: (query) => {
       if (!enabled) return false;
       const data = query.state.data as ParsedLiveGame[] | undefined;
