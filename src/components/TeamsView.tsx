@@ -168,7 +168,7 @@ function TeamRow({
               <StatBadge label={t("steals")} value={String(team.Steals)} />
               <StatBadge label={t("blocks")} value={String(team.Blocks)} />
               <StatBadge label={t("turnovers")} value={String(team.Turnovers)} />
-              <StatBadge label="At Rim %" value={atRimPct} />
+              <StatBadge label={t("atRimPct")} value={atRimPct} />
             </div>
           </td>
         </tr>
@@ -390,7 +390,7 @@ export default function TeamsView() {
       </div>
 
       <p className="mt-4 text-xs text-gray-700">
-        Fuente: pbpstats.com · Datos actualizados diariamente
+        {t("dataSource")}
       </p>
     </div>
   );

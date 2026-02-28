@@ -40,6 +40,7 @@ export const es = {
   live: "En directo",
   upcoming: "Próximos",
   finished: "Finalizados",
+  finalStatus: "Final",
   teamLabel: "Equipo",
   away: "Visitante",
   home: "Local",
@@ -47,6 +48,9 @@ export const es = {
   teamStats: "Estadísticas de equipo",
   errorLoadingGames: "No se pudieron cargar los partidos.",
   noGamesToday: "No hay partidos programados hoy.",
+
+  // Navegación accesibilidad
+  openMenu: "Abrir menú",
 
   // Página de equipos
   teamsPageTitle: "Equipos NBA",
@@ -57,6 +61,7 @@ export const es = {
   steals: "Robos",
   blocks: "Tapones",
   turnovers: "Pérdidas",
+  atRimPct: "% en aro",
 
   // Tooltips de estadísticas de equipos
   netRtgTitle: "Net Rating (Off - Def por 100 posesiones)",

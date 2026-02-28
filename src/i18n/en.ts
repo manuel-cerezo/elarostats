@@ -40,6 +40,7 @@ export const en = {
   live: "Live",
   upcoming: "Upcoming",
   finished: "Final",
+  finalStatus: "Final",
   teamLabel: "Team",
   away: "Away",
   home: "Home",
@@ -47,6 +48,9 @@ export const en = {
   teamStats: "Team Stats",
   errorLoadingGames: "Could not load games.",
   noGamesToday: "No games scheduled today.",
+
+  // Navigation accessibility
+  openMenu: "Open menu",
 
   // Teams page
   teamsPageTitle: "NBA Teams",
@@ -57,6 +61,7 @@ export const en = {
   steals: "Steals",
   blocks: "Blocks",
   turnovers: "Turnovers",
+  atRimPct: "At Rim %",
 
   // Team stats tooltips
   netRtgTitle: "Net Rating (Off - Def per 100 possessions)",
