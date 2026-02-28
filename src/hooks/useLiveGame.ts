@@ -4,12 +4,15 @@ import type { LiveGameResponse, LiveResultType } from "../types/games";
 
 const REFETCH_INTERVAL = 30_000; // 30 seconds
 
-export function useLiveGame(gameId: string, resultType: LiveResultType) {
+export function useLiveGame(gameId: string, resultType: LiveResultType, isFinal = false) {
   return useQuery<LiveGameResponse>({
     queryKey: ["live-game", gameId, resultType],
     queryFn: () => fetchLiveGame(gameId, resultType),
-    staleTime: REFETCH_INTERVAL,
-    refetchInterval: REFETCH_INTERVAL,
+    // Keep data in cache forever — prevents GC during navigation (even before isFinal is known)
+    gcTime: Infinity,
+    // When the game is over, mark stale immediately and stop polling
+    staleTime: isFinal ? Infinity : REFETCH_INTERVAL,
+    refetchInterval: isFinal ? false : REFETCH_INTERVAL,
     enabled: Boolean(gameId),
   });
 }

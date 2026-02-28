@@ -312,13 +312,14 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const homeRaw = gameInfo ? `${gameInfo.homeTeam} ${gameInfo.homeScore}` : "";
   const awayRaw = gameInfo ? `${gameInfo.awayTeam} ${gameInfo.awayScore}` : "";
   const time = gameInfo?.time ?? "";
+  const isFinal = gameInfo?.isFinal ?? false;
 
   const home = parseTeamField(homeRaw);
   const away = parseTeamField(awayRaw);
 
-  const teamQuery = useLiveGame(gameId, "team");
-  const playerQuery = useLiveGame(gameId, "player");
-  const flowQuery = useLiveGame(gameId, "game-flow");
+  const teamQuery = useLiveGame(gameId, "team", isFinal);
+  const playerQuery = useLiveGame(gameId, "player", isFinal);
+  const flowQuery = useLiveGame(gameId, "game-flow", isFinal);
 
   const teamData = teamQuery.data;
   const playerData = playerQuery.data;
@@ -426,13 +427,16 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
           <div className="text-center">
             {gameNotStarted ? (
               <p className="text-lg font-medium text-gray-500 dark:text-gray-400">{time}</p>
+            ) : isFinal ? (
+              <span className="rounded-full bg-gray-200 px-2 py-1 text-xs font-medium text-gray-500 dark:bg-gray-700/60 dark:text-gray-400">
+                {time.split("/")[0].trim()}
+              </span>
             ) : (
               <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-1 text-xs font-medium text-red-400">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
                 {t("liveTag")}
               </span>
             )}
-            <p className="mt-1 text-xs text-gray-400 dark:text-gray-600">{gameId}</p>
           </div>
 
           {/* Home */}

@@ -77,7 +77,7 @@ function formatStatValue(value: string | number | undefined): string {
 
 const DETAIL_REFETCH = 30_000;
 
-function useGameDetail(gameId: string, enabled: boolean) {
+function useGameDetail(gameId: string, enabled: boolean, isFinal = false) {
   return useQuery<GameDetail | null>({
     queryKey: ["game-detail", gameId],
     queryFn: async () => {
@@ -87,8 +87,10 @@ function useGameDetail(gameId: string, enabled: boolean) {
       if (!res.ok) return null;
       return (await res.json()) as GameDetail;
     },
-    staleTime: DETAIL_REFETCH,
-    refetchInterval: enabled ? DETAIL_REFETCH : false,
+    // When the game is over, cache the result indefinitely — no more refetches needed
+    staleTime: isFinal ? Infinity : DETAIL_REFETCH,
+    gcTime: isFinal ? Infinity : undefined,
+    refetchInterval: isFinal || !enabled ? false : DETAIL_REFETCH,
     enabled,
   });
 }
@@ -116,10 +118,11 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
   const homeId = abbrToTeamId.get(game.homeAbbr);
   const awayId = abbrToTeamId.get(game.awayAbbr);
 
-  // Fetch detail only for started games
+  // Fetch detail only for started games; cache forever when the game is final
   const { data: detail, isLoading: detailLoading } = useGameDetail(
     game.gameId,
     hasStarted,
+    game.isFinal,
   );
 
   const rows = detail?.game_data?.rows ?? [];

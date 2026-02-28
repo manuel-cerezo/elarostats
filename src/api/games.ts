@@ -44,6 +44,7 @@ export function parseTodaysGames(
     const away = parseTeamField(game.away);
     // A game is considered live if live_games > 0 and at least one team has scored
     const hasStarted = home.score > 0 || away.score > 0;
+    const isFinal = game.time.trim().toLowerCase().startsWith("final");
     return {
       gameid: game.gameid,
       time: game.time,
@@ -51,7 +52,8 @@ export function parseTodaysGames(
       homeScore: home.score,
       awayTeam: away.abbr,
       awayScore: away.score,
-      isLive: response.live_games > 0 && hasStarted,
+      isLive: response.live_games > 0 && hasStarted && !isFinal,
+      isFinal,
     };
   });
 }

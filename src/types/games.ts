@@ -18,6 +18,7 @@ export interface ParsedGame {
   awayTeam: string;
   awayScore: number;
   isLive: boolean;
+  isFinal: boolean;
 }
 
 export interface LiveGameResponse {
