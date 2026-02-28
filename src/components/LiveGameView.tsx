@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useLiveGame } from "../hooks/useLiveGame";
+import { useCompletedGame } from "../hooks/useCompletedGame";
 import { useTodaysGames } from "../hooks/useTodaysGames";
 import { useAllPlayers } from "../hooks/useAllPlayers";
 import { useTranslation } from "../hooks/useTranslation";
@@ -309,21 +310,34 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const { t } = useTranslation();
   const gameInfo = games?.find((g) => g.gameid === gameId);
 
+  // --- Supabase cache check (completed games) ---
+  // Always runs first; fast primary-key lookup. If data is found here, PBPStats
+  // queries are skipped entirely — no unnecessary polling for finished games.
+  const completedGame = useCompletedGame(gameId);
+  const isFromSupabase = completedGame.isFetched && !!completedGame.data;
+  const shouldQueryPBP = completedGame.isFetched && !completedGame.data;
+
   const homeRaw = gameInfo ? `${gameInfo.homeTeam} ${gameInfo.homeScore}` : "";
   const awayRaw = gameInfo ? `${gameInfo.awayTeam} ${gameInfo.awayScore}` : "";
-  const time = gameInfo?.time ?? "";
-  const isFinal = gameInfo?.isFinal ?? false;
+  const time = isFromSupabase ? "Final" : (gameInfo?.time ?? "");
+  const isFinal = isFromSupabase || (gameInfo?.isFinal ?? false);
 
-  const home = parseTeamField(homeRaw);
-  const away = parseTeamField(awayRaw);
+  // When data comes from Supabase, use the cached team info directly
+  const home = isFromSupabase
+    ? { abbr: completedGame.data!.home_team_abbr, score: completedGame.data!.home_score ?? 0 }
+    : parseTeamField(homeRaw);
+  const away = isFromSupabase
+    ? { abbr: completedGame.data!.away_team_abbr, score: completedGame.data!.away_score ?? 0 }
+    : parseTeamField(awayRaw);
 
-  const teamQuery = useLiveGame(gameId, "team", isFinal);
-  const playerQuery = useLiveGame(gameId, "player", isFinal);
-  const flowQuery = useLiveGame(gameId, "game-flow", isFinal);
+  const teamQuery = useLiveGame(gameId, "team", isFinal, { enabled: shouldQueryPBP });
+  const playerQuery = useLiveGame(gameId, "player", isFinal, { enabled: shouldQueryPBP });
+  const flowQuery = useLiveGame(gameId, "game-flow", isFinal, { enabled: shouldQueryPBP });
 
-  const teamData = teamQuery.data;
-  const playerData = playerQuery.data;
-  const flowData = flowQuery.data;
+  // Prefer Supabase data; fall back to PBPStats for live games
+  const teamData = isFromSupabase ? completedGame.data!.team_data : teamQuery.data;
+  const playerData = isFromSupabase ? completedGame.data!.player_data : playerQuery.data;
+  const flowData = isFromSupabase ? completedGame.data!.game_flow_data : flowQuery.data;
 
   const gameNotStarted = teamData?.status === "error" || !teamData?.game_data;
 
@@ -337,10 +351,11 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const awayTeamStats = teamGameData?.Away?.FullGame ?? {};
   const homeTeamStats = teamGameData?.Home?.FullGame ?? {};
 
-  // Use game_info from detail endpoints for more accurate/synced scores
+  // Use game_info from detail endpoints for more accurate/synced scores.
+  // When data comes from Supabase, home.score/away.score are already final.
   const detailGameInfo = (playerData?.game_data as { game_info?: { home_score?: number; visitor_score?: number } } | undefined)?.game_info;
-  const homeScore = detailGameInfo?.home_score ?? home.score;
-  const awayScore = detailGameInfo?.visitor_score ?? away.score;
+  const homeScore = isFromSupabase ? home.score : (detailGameInfo?.home_score ?? home.score);
+  const awayScore = isFromSupabase ? away.score : (detailGameInfo?.visitor_score ?? away.score);
 
   // Player data from PBPStats (wide-format: stat rows x player ID columns)
   const playerGameData = playerData?.game_data as
@@ -386,12 +401,15 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const scoreMargins = flowGameData?.score_margins ?? [];
   const maxTime = flowGameData?.max_time ?? 2880;
 
-  const isRefetching = teamQuery.isFetching || playerQuery.isFetching || flowQuery.isFetching;
-  const lastUpdated = Math.max(
-    teamQuery.dataUpdatedAt ?? 0,
-    playerQuery.dataUpdatedAt ?? 0,
-    flowQuery.dataUpdatedAt ?? 0,
-  );
+  const isRefetching =
+    !isFromSupabase && (teamQuery.isFetching || playerQuery.isFetching || flowQuery.isFetching);
+  const lastUpdated = isFromSupabase
+    ? 0
+    : Math.max(
+        teamQuery.dataUpdatedAt ?? 0,
+        playerQuery.dataUpdatedAt ?? 0,
+        flowQuery.dataUpdatedAt ?? 0,
+      );
 
   return (
     <div className="space-y-6">
