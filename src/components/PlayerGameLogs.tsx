@@ -48,14 +48,22 @@ type SortDir = "asc" | "desc";
 // --- Helpers ---
 
 function parseMinutes(raw: unknown): { display: string; num: number } {
-  if (typeof raw === "string") {
+  if (typeof raw === "string" && raw.includes(":")) {
     const [m, s] = raw.split(":");
     return { display: raw, num: parseInt(m ?? "0", 10) + parseInt(s ?? "0", 10) / 60 };
   }
-  const secs = Number(raw ?? 0);
-  const m = Math.floor(secs / 60);
-  const s = Math.round(secs % 60);
-  return { display: `${m}:${String(s).padStart(2, "0")}`, num: m + s / 60 };
+  // Decimal minutes (e.g. 37.2416...) or seconds
+  const num = Number(raw ?? 0);
+  if (num > 100) {
+    // Likely seconds — convert
+    const m = Math.floor(num / 60);
+    const s = Math.round(num % 60);
+    return { display: `${m}:${String(s).padStart(2, "0")}`, num: m + s / 60 };
+  }
+  // Decimal minutes (e.g. 37.2416 = 37 min 14 sec)
+  const m = Math.floor(num);
+  const s = Math.round((num - m) * 60);
+  return { display: `${m}:${String(s).padStart(2, "0")}`, num };
 }
 
 function pct(made: number, attempts: number): string {
@@ -65,7 +73,10 @@ function pct(made: number, attempts: number): string {
 
 function formatDate(dateStr: string, locale: string): string {
   try {
-    const d = new Date(`${dateStr}T12:00:00`);
+    // Handle ISO with time (e.g. "2026-02-28T00:00:00") or bare date ("2026-02-28")
+    const clean = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const d = new Date(`${clean}T12:00:00`);
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
       day: "numeric",
       month: "short",
