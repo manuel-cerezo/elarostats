@@ -212,7 +212,7 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
   }
 
   const thSort =
-    "cursor-pointer select-none px-2 py-2 text-right font-medium hover:text-orange-400 transition-colors";
+    "cursor-pointer select-none whitespace-nowrap px-3 py-2 text-right font-medium hover:text-orange-400 transition-colors";
 
   if (isLoading) {
     return (
@@ -248,7 +248,7 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
               <th className={thSort} onClick={() => handleSort("date")}>
                 {t("gameLogsDate")} <SortIndicator col="date" active={sortCol} dir={sortDir} />
               </th>
-              <th className="px-2 py-2 text-left font-medium">{t("gameLogsOpponent")}</th>
+              <th className="whitespace-nowrap px-3 py-2 text-left font-medium">{t("gameLogsOpponent")}</th>
               <th className={thSort} onClick={() => handleSort("pts")}>
                 {t("gameLogsPts")} <SortIndicator col="pts" active={sortCol} dir={sortDir} />
               </th>
@@ -288,7 +288,7 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
                 key={`${log.gameId}-${log.date}`}
                 className="border-t border-gray-100 text-gray-600 hover:bg-gray-50 dark:border-gray-700/50 dark:text-gray-300 dark:hover:bg-gray-700/30"
               >
-                <td className="whitespace-nowrap px-2 py-2 text-right">
+                <td className="whitespace-nowrap px-3 py-2 text-right">
                   <a
                     href={`/games/live?id=${log.gameId}`}
                     className="text-gray-500 transition-colors hover:text-orange-400 dark:text-gray-400"
@@ -296,7 +296,7 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
                     {formatDate(log.date, locale)}
                   </a>
                 </td>
-                <td className="whitespace-nowrap px-2 py-2 text-left font-medium text-gray-700 dark:text-gray-200">
+                <td className="whitespace-nowrap px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-200">
                   <div className="flex items-center gap-1.5">
                     {log.wl && (
                       <span
@@ -324,25 +324,25 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
                     })()}
                   </div>
                 </td>
-                <td className="px-2 py-2 text-right font-semibold text-gray-900 dark:text-white">
+                <td className="px-3 py-2 text-right font-semibold text-gray-900 dark:text-white">
                   {log.pts}
                 </td>
-                <td className="px-2 py-2 text-right">{log.reb}</td>
-                <td className="px-2 py-2 text-right">{log.ast}</td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">{log.stl}</td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">{log.blk}</td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">{log.to}</td>
-                <td className="hidden px-2 py-2 text-right text-gray-500 dark:text-gray-400 sm:table-cell">
+                <td className="px-3 py-2 text-right">{log.reb}</td>
+                <td className="px-3 py-2 text-right">{log.ast}</td>
+                <td className="hidden px-3 py-2 text-right sm:table-cell">{log.stl}</td>
+                <td className="hidden px-3 py-2 text-right sm:table-cell">{log.blk}</td>
+                <td className="hidden px-3 py-2 text-right sm:table-cell">{log.to}</td>
+                <td className="hidden px-3 py-2 text-right text-gray-500 dark:text-gray-400 sm:table-cell">
                   {log.min}
                 </td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">
+                <td className="hidden px-3 py-2 text-right sm:table-cell">
                   {pct(log.fgm, log.fga)}
                 </td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">
+                <td className="hidden px-3 py-2 text-right sm:table-cell">
                   {pct(log.fg3m, log.fg3a)}
                 </td>
                 <td
-                  className={`px-2 py-2 text-right font-medium ${
+                  className={`px-3 py-2 text-right font-medium ${
                     log.plusMinus > 0
                       ? "text-green-500"
                       : log.plusMinus < 0
