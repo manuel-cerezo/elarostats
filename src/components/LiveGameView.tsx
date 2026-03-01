@@ -475,8 +475,21 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const isFromSupabase = completedGame.isFetched && !!completedGame.data;
   const shouldQueryPBP = completedGame.isFetched && !completedGame.data;
 
-  const { data: games } = useTodaysGames({ enabled: shouldQueryPBP });
+  const { data: games, isError: todaysGamesError } = useTodaysGames({ enabled: shouldQueryPBP });
   const gameInfo = games?.find((g) => g.gameid === gameId);
+
+  // --- Loading state: show skeleton while initial data is being fetched ---
+  if (!completedGame.isFetched || (shouldQueryPBP && !games && !todaysGamesError)) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-12">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800/60" />
+          <div className="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800/40" />
+          <div className="mt-6 h-64 w-full max-w-2xl animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800/40" />
+        </div>
+      </div>
+    );
+  }
 
   const homeRaw = gameInfo ? `${gameInfo.homeTeam} ${gameInfo.homeScore}` : "";
   const awayRaw = gameInfo ? `${gameInfo.awayTeam} ${gameInfo.awayScore}` : "";
@@ -501,6 +514,10 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const teamData = isFromSupabase ? completedGame.data!.team_data : teamQuery.data;
   const playerData = isFromSupabase ? completedGame.data!.player_data : playerQuery.data;
   const flowData = isFromSupabase ? completedGame.data!.game_flow_data : flowQuery.data;
+
+  // If PBPStats failed for all queries and game is not in Supabase, show error
+  const pbpAllFailed =
+    shouldQueryPBP && teamQuery.isError && playerQuery.isError && flowQuery.isError;
 
   const gameNotStarted = teamData?.status === "error" || !teamData?.game_data;
 
@@ -589,13 +606,27 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
 
   // --- Render ---
 
+  // Error state: game not found anywhere
+  if (pbpAllFailed && !gameInfo) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-12 text-center">
+        <p className="text-sm text-gray-500">
+          {t("gameNotFound")}{" "}
+          <a href="/" className="text-orange-400 hover:underline">
+            {t("backToHome")}
+          </a>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* ── Sticky Scoreboard Bar ── */}
       <div className="sticky top-14 z-30 border-b border-gray-200/60 bg-white/95 backdrop-blur-sm dark:border-gray-800/60 dark:bg-gray-950/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
           {/* Back link */}
-          <a href="/" className="text-sm text-gray-500 transition-colors hover:text-orange-400">
+          <a href="/games/" className="text-sm text-gray-500 transition-colors hover:text-orange-400">
             ← {t("back")}
           </a>
 

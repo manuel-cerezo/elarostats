@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
 import { useGameLogs } from "../hooks/useGameLogs";
 import { useTranslation } from "../hooks/useTranslation";
+import teamsData from "../data/teams.json";
+
+const abbrToTeamId = new Map<string, number>(teamsData.map((t) => [t.abbreviation, t.teamId]));
 
 // --- Types ---
 
@@ -8,6 +11,7 @@ interface ParsedLog {
   date: string;
   gameId: string;
   opponent: string;
+  wl: "W" | "L" | null;
   pts: number;
   reb: number;
   ast: number;
@@ -35,7 +39,9 @@ function pct(made: number, attempts: number): string {
 
 function formatDate(dateStr: string, locale: string): string {
   try {
-    const d = new Date(`${dateStr}T12:00:00`);
+    const clean = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const d = new Date(`${clean}T12:00:00`);
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
       day: "numeric",
       month: "short",
@@ -67,6 +73,7 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
   const { t, locale } = useTranslation();
   const [sortCol, setSortCol] = useState<SortCol>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [wlFilter, setWlFilter] = useState<"all" | "W" | "L">("all");
 
   const logs = useMemo<ParsedLog[]>(() => {
     if (!data?.multi_row_table_data) return [];
@@ -75,10 +82,12 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
       const fg2a = Number(row.FG2A ?? 0);
       const fg3m = Number(row.FG3M ?? 0);
       const fg3a = Number(row.FG3A ?? 0);
+      const wlRaw = String(row.WL ?? row.wl ?? "").toUpperCase();
       return {
         date: String(row.Date ?? ""),
         gameId: String(row.GameId ?? ""),
         opponent: String(row.Opponent ?? ""),
+        wl: wlRaw === "W" ? "W" : wlRaw === "L" ? "L" : null,
         pts: Number(row.Points ?? 0),
         reb: Number(row.Rebounds ?? 0),
         ast: Number(row.Assists ?? 0),
@@ -151,6 +160,14 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
     });
   }, [logs, sortCol, sortDir]);
 
+  const filtered = useMemo(
+    () => (wlFilter === "all" ? sorted : sorted.filter((l) => l.wl === wlFilter)),
+    [sorted, wlFilter],
+  );
+
+  const winsCount = useMemo(() => logs.filter((l) => l.wl === "W").length, [logs]);
+  const lossesCount = useMemo(() => logs.filter((l) => l.wl === "L").length, [logs]);
+
   function handleSort(col: SortCol) {
     if (sortCol === col) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
@@ -160,7 +177,7 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
   }
 
   const thSort =
-    "cursor-pointer select-none px-2 py-2 text-right font-medium hover:text-orange-400 transition-colors";
+    "cursor-pointer select-none whitespace-nowrap px-3 py-2 text-right font-medium hover:text-orange-400 transition-colors";
 
   if (isLoading) {
     return (
@@ -186,9 +203,39 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
 
   return (
     <div className="mt-10">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-        {t("gameLogs")}
-      </p>
+      <div className="mb-3 flex items-center gap-3">
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+          {t("gameLogs")}
+        </p>
+        <div className="flex gap-1">
+          {(["all", "W", "L"] as const).map((val) => {
+            const isActive = wlFilter === val;
+            const label =
+              val === "all"
+                ? `${t("all")} (${logs.length})`
+                : val === "W"
+                  ? `W (${winsCount})`
+                  : `L (${lossesCount})`;
+            return (
+              <button
+                key={val}
+                onClick={() => setWlFilter(val)}
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors ${
+                  isActive
+                    ? val === "W"
+                      ? "bg-green-500/15 text-green-500"
+                      : val === "L"
+                        ? "bg-red-400/15 text-red-400"
+                        : "bg-orange-400/15 text-orange-400"
+                    : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/40">
         <table className="w-full text-xs">
           <thead>
@@ -196,7 +243,9 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
               <th className={thSort} onClick={() => handleSort("date")}>
                 {t("gameLogsDate")} <SortIndicator col="date" active={sortCol} dir={sortDir} />
               </th>
-              <th className="px-2 py-2 text-left font-medium">{t("gameLogsOpponent")}</th>
+              <th className="whitespace-nowrap px-3 py-2 text-left font-medium">
+                {t("gameLogsOpponent")}
+              </th>
               <th className={thSort} onClick={() => handleSort("pts")}>
                 {t("gameLogsPts")} <SortIndicator col="pts" active={sortCol} dir={sortDir} />
               </th>
@@ -227,12 +276,12 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((log) => (
+            {filtered.map((log) => (
               <tr
                 key={`${log.gameId}-${log.date}`}
                 className="border-t border-gray-100 text-gray-600 hover:bg-gray-50 dark:border-gray-700/50 dark:text-gray-300 dark:hover:bg-gray-700/30"
               >
-                <td className="whitespace-nowrap px-2 py-2 text-right">
+                <td className="whitespace-nowrap px-3 py-2 text-right">
                   <a
                     href={`/games/live?id=${log.gameId}`}
                     className="text-gray-500 transition-colors hover:text-orange-400 dark:text-gray-400"
@@ -240,26 +289,51 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
                     {formatDate(log.date, locale)}
                   </a>
                 </td>
-                <td className="whitespace-nowrap px-2 py-2 text-left font-medium text-gray-700 dark:text-gray-200">
-                  {log.opponent}
+                <td className="whitespace-nowrap px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-200">
+                  <div className="flex items-center gap-1.5">
+                    {log.wl && (
+                      <span
+                        className={`inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-bold leading-none ${
+                          log.wl === "W"
+                            ? "bg-green-500/15 text-green-500"
+                            : "bg-red-400/15 text-red-400"
+                        }`}
+                      >
+                        {log.wl}
+                      </span>
+                    )}
+                    {(() => {
+                      const oppTeamId = abbrToTeamId.get(log.opponent.toUpperCase());
+                      return oppTeamId ? (
+                        <a
+                          href={`/teams/${oppTeamId}`}
+                          className="transition-colors hover:text-orange-400"
+                        >
+                          {log.opponent}
+                        </a>
+                      ) : (
+                        log.opponent
+                      );
+                    })()}
+                  </div>
                 </td>
-                <td className="px-2 py-2 text-right font-semibold text-gray-900 dark:text-white">
+                <td className="px-3 py-2 text-right font-semibold text-gray-900 dark:text-white">
                   {log.pts}
                 </td>
-                <td className="px-2 py-2 text-right">{log.reb}</td>
-                <td className="px-2 py-2 text-right">{log.ast}</td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">{log.stl}</td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">{log.to}</td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">
+                <td className="px-3 py-2 text-right">{log.reb}</td>
+                <td className="px-3 py-2 text-right">{log.ast}</td>
+                <td className="hidden px-3 py-2 text-right sm:table-cell">{log.stl}</td>
+                <td className="hidden px-3 py-2 text-right sm:table-cell">{log.to}</td>
+                <td className="hidden px-3 py-2 text-right sm:table-cell">
                   {pct(log.fgm, log.fga)}
                 </td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">
+                <td className="hidden px-3 py-2 text-right sm:table-cell">
                   {pct(log.fg3m, log.fg3a)}
                 </td>
-                <td className="px-2 py-2 text-right">
+                <td className="px-3 py-2 text-right">
                   {log.efg > 0 ? (log.efg * 100).toFixed(1) : "—"}
                 </td>
-                <td className="hidden px-2 py-2 text-right sm:table-cell">
+                <td className="hidden px-3 py-2 text-right sm:table-cell">
                   {log.ts > 0 ? (log.ts * 100).toFixed(1) : "—"}
                 </td>
               </tr>
