@@ -115,7 +115,11 @@ function TeamRow({
       >
         <td className="px-4 py-3 text-sm font-medium text-gray-600">{rank}</td>
         <td className="px-4 py-3">
-          <div className="flex items-center gap-3">
+          <a
+            href={`/teams/${team.TeamId}`}
+            className="flex items-center gap-3 transition-opacity hover:opacity-80"
+            onClick={(e) => e.stopPropagation()}
+          >
             <img
               src={teamLogoUrl}
               alt={team.TeamAbbreviation}
@@ -125,10 +129,10 @@ function TeamRow({
               }}
             />
             <div>
-              <div className="font-semibold text-gray-900 dark:text-white">{teamName}</div>
+              <div className="font-semibold text-gray-900 hover:text-orange-500 dark:text-white dark:hover:text-orange-400">{teamName}</div>
               <div className="text-xs text-gray-500">{team.TeamAbbreviation}</div>
             </div>
-          </div>
+          </a>
         </td>
         <td className="px-4 py-3 text-center">
           <span className="text-sm font-semibold text-gray-900 dark:text-white">{record}</span>
