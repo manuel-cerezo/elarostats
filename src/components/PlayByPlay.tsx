@@ -114,7 +114,7 @@ export default function PlayByPlay({ possessions, homeAbbr, awayAbbr }: PlayByPl
       </div>
 
       {/* Quarters */}
-      <div ref={scrollRef} className="max-h-[600px] overflow-y-auto">
+      <div ref={scrollRef} className="max-h-[700px] overflow-y-auto">
         {quarters.map((group) => {
           const isOpen = expanded.has(group.quarter);
           return (
