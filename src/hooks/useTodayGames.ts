@@ -20,11 +20,18 @@ function completedToParsed(game: CompletedGame): ParsedLiveGame {
 }
 
 /**
+ * Returns today's date in YYYY-MM-DD format in US Eastern time (NBA's timezone).
+ */
+function getTodayET(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+}
+
+/**
  * Supabase-first hook for the games page.
  *
  * 1. Fetches the latest completed games from Supabase (fast, our own DB).
- * 2. If Supabase has games, uses them directly and skips PBPStats entirely.
- * 3. If Supabase has no games (live day or pre-sync), falls back to PBPStats.
+ * 2. If Supabase has games **for today**, uses them and skips PBPStats.
+ * 3. Otherwise (games are from a previous day, or no games), falls back to PBPStats.
  *
  * Also pre-seeds the TanStack Query cache for each completed game so that
  * individual GameCard `useCompletedGame` calls get instant cache hits.
@@ -52,22 +59,28 @@ export function useTodayGames() {
     gcTime: Infinity,
   });
 
-  const hasSupabaseGames =
-    supabaseFetched && !supabaseError && completedGames != null && completedGames.length > 0;
+  // Only use Supabase games if they match today's date (ET)
+  const todayET = getTodayET();
+  const hasSupabaseGamesForToday =
+    supabaseFetched &&
+    !supabaseError &&
+    completedGames != null &&
+    completedGames.length > 0 &&
+    completedGames[0]?.game_date === todayET;
 
-  // Only call PBPStats if Supabase has no games for today
+  // Fall back to PBPStats if Supabase has no games for today
   const {
     data: pbpGames,
     isLoading: pbpLoading,
     isError: pbpError,
-  } = useLiveGamesData(supabaseFetched && !hasSupabaseGames);
+  } = useLiveGamesData(supabaseFetched && !hasSupabaseGamesForToday);
 
   // Derive final game list
-  const games: ParsedLiveGame[] | undefined = hasSupabaseGames
+  const games: ParsedLiveGame[] | undefined = hasSupabaseGamesForToday
     ? completedGames.map(completedToParsed)
     : pbpGames;
 
-  const isLoading = !supabaseFetched || (!hasSupabaseGames && pbpLoading);
+  const isLoading = !supabaseFetched || (!hasSupabaseGamesForToday && pbpLoading);
   const isError = supabaseError && pbpError;
 
   return { data: games, isLoading, isError };
