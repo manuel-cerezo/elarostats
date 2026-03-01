@@ -8,6 +8,9 @@ export interface Team {
   location: string;
   conference: string;
   division: string;
+  arena: string;
+  arenaCapacity: number;
+  arenaImage: string;
 }
 
 // Local teams from static JSON bundled with the app
@@ -19,6 +22,9 @@ const localTeams: Team[] = teamsData.map((t) => ({
   location: t.location,
   conference: t.conference,
   division: t.division,
+  arena: t.arena,
+  arenaCapacity: t.arenaCapacity,
+  arenaImage: t.arenaImage,
 }));
 
 const localById = new Map<number, Team>(localTeams.map((t) => [t.teamId, t]));
