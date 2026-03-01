@@ -183,4 +183,5 @@ gh workflow run sync-players.yml --field year=2025
 
 ## API
 
-[https://api.pbpstats.com/docs#/](https://api.pbpstats.com/docs#/)
+- [PBP Stats](https://api.pbpstats.com/docs#/)
+- [nba-api-ts](https://github.com/gek0z/nba-api-ts) — TypeScript NBA API client
