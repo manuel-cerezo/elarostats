@@ -11,6 +11,7 @@ interface ParsedLog {
   date: string;
   gameId: string;
   opponent: string;
+  wl: "W" | "L" | null;
   pts: number;
   reb: number;
   ast: number;
@@ -105,10 +106,12 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
       const fg2a = Number(row.FG2A ?? 0);
       const fg3m = Number(row.FG3M ?? 0);
       const fg3a = Number(row.FG3A ?? 0);
+      const wlRaw = String(row.WL ?? row.wl ?? "").toUpperCase();
       return {
         date: String(row.Date ?? ""),
         gameId: String(row.GameId ?? ""),
         opponent: String(row.Opponent ?? ""),
+        wl: wlRaw === "W" ? "W" : wlRaw === "L" ? "L" : null,
         pts: Number(row.Points ?? 0),
         reb: Number(row.Rebounds ?? 0),
         ast: Number(row.Assists ?? 0),
@@ -283,19 +286,32 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
                   </a>
                 </td>
                 <td className="whitespace-nowrap px-2 py-2 text-left font-medium text-gray-700 dark:text-gray-200">
-                  {(() => {
-                    const teamId = abbrToTeamId.get(log.opponent.toUpperCase());
-                    return teamId ? (
-                      <a
-                        href={`/teams/${teamId}`}
-                        className="transition-colors hover:text-orange-400"
+                  <div className="flex items-center gap-1.5">
+                    {log.wl && (
+                      <span
+                        className={`inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-bold leading-none ${
+                          log.wl === "W"
+                            ? "bg-green-500/15 text-green-500"
+                            : "bg-red-400/15 text-red-400"
+                        }`}
                       >
-                        {log.opponent}
-                      </a>
-                    ) : (
-                      log.opponent
-                    );
-                  })()}
+                        {log.wl}
+                      </span>
+                    )}
+                    {(() => {
+                      const teamId = abbrToTeamId.get(log.opponent.toUpperCase());
+                      return teamId ? (
+                        <a
+                          href={`/teams/${teamId}`}
+                          className="transition-colors hover:text-orange-400"
+                        >
+                          {log.opponent}
+                        </a>
+                      ) : (
+                        log.opponent
+                      );
+                    })()}
+                  </div>
                 </td>
                 <td className="px-2 py-2 text-right font-semibold text-gray-900 dark:text-white">
                   {log.pts}
