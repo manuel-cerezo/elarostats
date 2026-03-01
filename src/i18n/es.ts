@@ -104,6 +104,35 @@ export const es = {
   gameFlowTied: "Empate",
   gameFlowMargin: "Margen",
 
+  // Game logs
+  gameLogs: "Registro de partidos",
+  gameLogsDate: "Fecha",
+  gameLogsOpponent: "Rival",
+  gameLogsPts: "PTS",
+  gameLogsReb: "REB",
+  gameLogsAst: "AST",
+  gameLogsStl: "ROB",
+  gameLogsBlk: "TAP",
+  gameLogsTo: "PÉR",
+  gameLogsMin: "MIN",
+  gameLogsFgPct: "TC%",
+  gameLogsFg3Pct: "3P%",
+  gameLogsFtPct: "TL%",
+  gameLogsPlusMinus: "+/-",
+  gameLogsPtsAllowed: "PTS enc.",
+  gameLogsNoData: "No hay registros de partidos disponibles.",
+  gameLogsLoading: "Cargando registro de partidos...",
+
+  // Play-by-play
+  playByPlay: "Jugada a jugada",
+  pbpQuarter: "Q{n}",
+  pbpOvertime: "OT{n}",
+  pbpScored: "Anotado",
+  pbpTurnover: "Pérdida",
+  pbpNoData: "No hay datos jugada a jugada disponibles.",
+  pbpExpandAll: "Expandir todo",
+  pbpCollapseAll: "Colapsar todo",
+
   // Live game
   updatedSecondsAgo: "Actualizado hace {seconds}s",
   updatedJustNow: "Actualizado hace unos segundos",

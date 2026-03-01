@@ -104,6 +104,35 @@ export const en = {
   gameFlowTied: "Tied",
   gameFlowMargin: "Margin",
 
+  // Game logs
+  gameLogs: "Game Log",
+  gameLogsDate: "Date",
+  gameLogsOpponent: "Opp",
+  gameLogsPts: "PTS",
+  gameLogsReb: "REB",
+  gameLogsAst: "AST",
+  gameLogsStl: "STL",
+  gameLogsBlk: "BLK",
+  gameLogsTo: "TO",
+  gameLogsMin: "MIN",
+  gameLogsFgPct: "FG%",
+  gameLogsFg3Pct: "3P%",
+  gameLogsFtPct: "FT%",
+  gameLogsPlusMinus: "+/-",
+  gameLogsPtsAllowed: "PTS agn.",
+  gameLogsNoData: "No game log data available.",
+  gameLogsLoading: "Loading game log...",
+
+  // Play-by-play
+  playByPlay: "Play-by-Play",
+  pbpQuarter: "Q{n}",
+  pbpOvertime: "OT{n}",
+  pbpScored: "Scored",
+  pbpTurnover: "Turnover",
+  pbpNoData: "No play-by-play data available.",
+  pbpExpandAll: "Expand all",
+  pbpCollapseAll: "Collapse all",
+
   // Live game
   updatedSecondsAgo: "Updated {seconds}s ago",
   updatedJustNow: "Updated just now",

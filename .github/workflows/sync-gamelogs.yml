@@ -1,0 +1,32 @@
+name: Sync Game Logs
+
+on:
+  schedule:
+    # 06:30 UTC = 07:30 CET (winter) / 08:30 CEST (summer).
+    # Runs after sync-pbpstats (06:00) to ensure player/team IDs are fresh.
+    - cron: "30 6 * * *"
+  workflow_dispatch: # permite lanzarlo manualmente desde GitHub
+
+jobs:
+  sync:
+    name: Sync player & team game logs from pbpstats → Supabase
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run sync script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: npm run sync:gamelogs

@@ -4,6 +4,7 @@ import { getAllPlayers } from "../../api/local";
 import { getHeadshotUrl, getTeamLogoUrl } from "../../utils/playerStats";
 import { PLAYER_HEADSHOT_FALLBACK_URL } from "../../constants/player";
 import PlayerStatsPageWithQuery from "../../components/PlayerStatsPageWithQuery";
+import PlayerGameLogsWithQuery from "../../components/PlayerGameLogsWithQuery";
 
 export async function getStaticPaths() {
   const players = await getAllPlayers();
@@ -82,5 +83,7 @@ const jsonLd = {
     </div>
 
     <PlayerStatsPageWithQuery client:only="react" player={player} />
+
+    <PlayerGameLogsWithQuery client:only="react" nbaId={player.nba_id} />
   </main>
 </Layout>

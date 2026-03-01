@@ -3,6 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import { getAllTeams } from "../../lib/teams";
 import { getTeamLogoUrl } from "../../utils/playerStats";
 import TeamRosterWithQuery from "../../components/TeamRosterWithQuery";
+import TeamGameLogsWithQuery from "../../components/TeamGameLogsWithQuery";
 import TranslatedTextWithQuery from "../../components/TranslatedTextWithQuery";
 
 export async function getStaticPaths() {
@@ -59,6 +60,8 @@ const jsonLd = {
         <p class="mt-1 text-gray-500 dark:text-gray-400">{team.abbreviation}</p>
       </div>
     </div>
+
+    <TeamGameLogsWithQuery client:only="react" teamId={team.teamId} />
 
     <p
       class="mb-1 mt-10 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
