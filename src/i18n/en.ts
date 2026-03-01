@@ -13,6 +13,7 @@ export const en = {
 
   // Home
   heroSubtitle: "NBA stats, analytics, and insights — all in one place.",
+  heroLeaderPpg: "PTS",
   todaysGames: "Today's Games",
   teams: "Teams",
 
@@ -72,6 +73,8 @@ export const en = {
   last10: "Last 10",
   streak: "Streak",
   conference: "Conference",
+  conferenceEast: "Eastern Conference",
+  conferenceWest: "Western Conference",
   division: "Division",
   recordTitle: "Win-loss record",
 
