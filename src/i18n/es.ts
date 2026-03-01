@@ -17,6 +17,8 @@ export const es = {
   teams: "Equipos",
 
   // Página de equipo
+  arena: "Estadio",
+  capacity: "Capacidad",
   roster: "Plantilla",
   player: "Jugador",
   errorLoadingPlayers: "Error al cargar los jugadores. Inténtalo de nuevo.",

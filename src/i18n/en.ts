@@ -17,6 +17,8 @@ export const en = {
   teams: "Teams",
 
   // Team page
+  arena: "Arena",
+  capacity: "Capacity",
   roster: "Roster",
   player: "Player",
   errorLoadingPlayers: "Error loading players. Please try again.",
