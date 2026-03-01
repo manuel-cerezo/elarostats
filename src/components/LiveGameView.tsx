@@ -478,19 +478,6 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const { data: games, isError: todaysGamesError } = useTodaysGames({ enabled: shouldQueryPBP });
   const gameInfo = games?.find((g) => g.gameid === gameId);
 
-  // --- Loading state: show skeleton while initial data is being fetched ---
-  if (!completedGame.isFetched || (shouldQueryPBP && !games && !todaysGamesError)) {
-    return (
-      <div className="mx-auto max-w-7xl px-4 py-12">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800/60" />
-          <div className="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800/40" />
-          <div className="mt-6 h-64 w-full max-w-2xl animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800/40" />
-        </div>
-      </div>
-    );
-  }
-
   const homeRaw = gameInfo ? `${gameInfo.homeTeam} ${gameInfo.homeScore}` : "";
   const awayRaw = gameInfo ? `${gameInfo.awayTeam} ${gameInfo.awayScore}` : "";
   const time = isFromSupabase ? t("finalStatus") : (gameInfo?.time ?? "");
@@ -605,6 +592,19 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const hasTeamStats = Object.keys(awayTeamStats).length > 0 || Object.keys(homeTeamStats).length > 0;
 
   // --- Render ---
+
+  // Loading state: show skeleton while initial data is being fetched
+  if (!completedGame.isFetched || (shouldQueryPBP && !games && !todaysGamesError)) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-12">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-48 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800/60" />
+          <div className="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-gray-800/40" />
+          <div className="mt-6 h-64 w-full max-w-2xl animate-pulse rounded-xl bg-gray-200 dark:bg-gray-800/40" />
+        </div>
+      </div>
+    );
+  }
 
   // Error state: game not found anywhere
   if (pbpAllFailed && !gameInfo) {
