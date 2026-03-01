@@ -98,6 +98,13 @@ function rowToObject(headers: string[], row: unknown[]): Record<string, unknown>
   return Object.fromEntries(headers.map((h, i) => [h, row[i]]));
 }
 
+/** Extract opponent abbreviation from MATCHUP like "LAL vs. GSW" or "LAL @ DEN" */
+function parseOpponent(matchup: unknown): string | null {
+  if (typeof matchup !== "string") return null;
+  const parts = matchup.split(/\s+(?:vs\.|@)\s+/);
+  return parts.length === 2 ? parts[1].trim() : matchup;
+}
+
 // ---------------------------------------------------------------------------
 // Fetch game logs from NBA Stats API (bulk — all entities in one call)
 // ---------------------------------------------------------------------------
@@ -151,7 +158,7 @@ function mapPlayerLogRow(
     season,
     season_type: seasonType,
     date: row.GAME_DATE ?? null,
-    opponent: row.MATCHUP ?? null,
+    opponent: parseOpponent(row.MATCHUP),
     points: pts,
     rebounds: row.REB ?? null,
     assists: row.AST ?? null,
@@ -168,6 +175,7 @@ function mapPlayerLogRow(
     efg_pct: efgPct,
     ts_pct: tsPct,
     plus_minus: row.PLUS_MINUS ?? null,
+    wl: row.WL ?? null,
     raw_data: row,
     synced_at: new Date().toISOString(),
   };
@@ -196,7 +204,7 @@ function mapTeamLogRow(
     season,
     season_type: seasonType,
     date: row.GAME_DATE ?? null,
-    opponent: row.MATCHUP ?? null,
+    opponent: parseOpponent(row.MATCHUP),
     points: pts,
     rebounds: row.REB ?? null,
     assists: row.AST ?? null,
@@ -210,6 +218,7 @@ function mapTeamLogRow(
     fta,
     efg_pct: efgPct,
     ts_pct: tsPct,
+    wl: row.WL ?? null,
     raw_data: row,
     synced_at: new Date().toISOString(),
   };
