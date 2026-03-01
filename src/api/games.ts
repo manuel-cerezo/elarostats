@@ -1,4 +1,6 @@
 import type {
+  GameLogEntityType,
+  GameLogsResponse,
   LiveGameResponse,
   LiveResultType,
   ParsedGame,
@@ -34,6 +36,25 @@ export async function fetchLiveGame(
     throw new Error(`Error fetching live game ${gameId}: ${res.status}`);
   }
   return res.json() as Promise<LiveGameResponse>;
+}
+
+export async function fetchGameLogs(
+  entityType: GameLogEntityType,
+  entityId: string | number,
+): Promise<GameLogsResponse> {
+  const params = new URLSearchParams({
+    Season: "2025-26",
+    SeasonType: "Regular+Season",
+    EntityType: entityType,
+    EntityId: String(entityId),
+  });
+  const res = await fetch(`${PBPSTATS_BASE}/get-game-logs/nba?${params.toString()}`, {
+    referrerPolicy: "no-referrer",
+  });
+  if (!res.ok) {
+    throw new Error(`Error fetching game logs: ${res.status}`);
+  }
+  return res.json() as Promise<GameLogsResponse>;
 }
 
 export function parseTodaysGames(

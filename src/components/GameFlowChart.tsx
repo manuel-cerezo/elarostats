@@ -3,6 +3,7 @@ import {
   Area,
   XAxis,
   YAxis,
+  Label,
   ReferenceLine,
   Tooltip,
   ResponsiveContainer,
@@ -180,7 +181,7 @@ export default function GameFlowChart({
       </div>
 
       <ResponsiveContainer width="100%" height={200}>
-        <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: -16 }}>
+        <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
           <defs>
             <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
               <stop offset={0} stopColor="#fb923c" stopOpacity={isDark ? 0.5 : 0.3} />
@@ -210,7 +211,20 @@ export default function GameFlowChart({
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) => (v === 0 ? "0" : v > 0 ? `+${v}` : `${v}`)}
-          />
+          >
+            <Label
+              value={homeAbbr}
+              position="insideTopLeft"
+              offset={8}
+              style={{ fontSize: 11, fontWeight: 700, fill: "#fb923c" }}
+            />
+            <Label
+              value={awayAbbr}
+              position="insideBottomLeft"
+              offset={8}
+              style={{ fontSize: 11, fontWeight: 700, fill: "#60a5fa" }}
+            />
+          </YAxis>
 
           {/* Zero (tie) line */}
           <ReferenceLine y={0} stroke={refLineColor} strokeDasharray="3 3" strokeWidth={1} />

@@ -7,8 +7,10 @@ import { useTranslation } from "../hooks/useTranslation";
 import { NBA_CDN_BASE_URL } from "../constants/player";
 import teamsData from "../data/teams.json";
 import GameFlowChart from "./GameFlowChart";
+import PlayByPlay from "./PlayByPlay";
 import type { ScoreMargin } from "./GameFlowChart";
 import type { Player } from "../types/player";
+import type { Possession } from "../types/games";
 
 const abbrToTeamId = new Map<string, number>(teamsData.map((t) => [t.abbreviation, t.teamId]));
 
@@ -430,6 +432,10 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const teamQuery = useLiveGame(gameId, "team", isFinal, { enabled: shouldQueryPBP });
   const playerQuery = useLiveGame(gameId, "player", isFinal, { enabled: shouldQueryPBP });
   const flowQuery = useLiveGame(gameId, "game-flow", isFinal, { enabled: shouldQueryPBP });
+  // PBP is not cached in Supabase, so always fetch from PBPStats
+  const pbpQuery = useLiveGame(gameId, "possession-by-possession", isFinal, {
+    enabled: Boolean(gameId) && (shouldQueryPBP || isFromSupabase),
+  });
 
   // Prefer Supabase data; fall back to PBPStats for live games
   const teamData = isFromSupabase ? completedGame.data!.team_data : teamQuery.data;
@@ -498,14 +504,22 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const scoreMargins = flowGameData?.score_margins ?? [];
   const maxTime = flowGameData?.max_time ?? 2880;
 
+  // Play-by-play data
+  const pbpGameData = pbpQuery.data?.game_data as
+    | { possessions?: Possession[] }
+    | undefined;
+  const possessions = pbpGameData?.possessions ?? [];
+
   const isRefetching =
-    !isFromSupabase && (teamQuery.isFetching || playerQuery.isFetching || flowQuery.isFetching);
+    !isFromSupabase &&
+    (teamQuery.isFetching || playerQuery.isFetching || flowQuery.isFetching || pbpQuery.isFetching);
   const lastUpdated = isFromSupabase
     ? 0
     : Math.max(
         teamQuery.dataUpdatedAt ?? 0,
         playerQuery.dataUpdatedAt ?? 0,
         flowQuery.dataUpdatedAt ?? 0,
+        pbpQuery.dataUpdatedAt ?? 0,
       );
 
   // Game date: use stored game_date for completed games, today for live/upcoming
@@ -636,6 +650,15 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
                 stats={homeTeamStats}
               />
             </div>
+          )}
+
+          {/* Play-by-play */}
+          {possessions.length > 0 && (
+            <PlayByPlay
+              possessions={possessions}
+              homeAbbr={home.abbr}
+              awayAbbr={away.abbr}
+            />
           )}
 
           {/* Player boxscore */}
