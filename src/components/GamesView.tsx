@@ -214,15 +214,16 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
 
       {/* Scoreboard */}
       <div className="px-4 py-4">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 sm:gap-x-4">
           {/* Away team */}
           <a
             href={awayId ? `/teams/${awayId}` : "#"}
-            className={`flex items-center justify-end gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${hasStarted && !awayWins && !isTied ? "opacity-50" : ""}`}
+            className={`flex min-w-0 items-center justify-end gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-gray-100 sm:gap-3 sm:px-2 dark:hover:bg-gray-800/40 ${hasStarted && !awayWins && !isTied ? "opacity-50" : ""}`}
           >
-            <div className="text-right">
-              <div className={`font-semibold ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-300"}`}>
-                {awayTeam?.teamName ?? game.awayAbbr}
+            <div className="min-w-0 text-right">
+              <div className={`truncate text-sm font-semibold sm:text-base ${awayWins ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-300"}`}>
+                <span className="sm:hidden">{game.awayAbbr}</span>
+                <span className="hidden sm:inline">{awayTeam?.teamName ?? game.awayAbbr}</span>
               </div>
               <div className="text-xs text-gray-500">{t("away")}</div>
             </div>
@@ -230,7 +231,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
               <img
                 src={`/teams/${awayId}.svg`}
                 alt={game.awayAbbr}
-                className="h-10 w-10 flex-shrink-0 object-contain"
+                className="h-8 w-8 flex-shrink-0 object-contain sm:h-10 sm:w-10"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
@@ -241,9 +242,9 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           {/* Score */}
           {hasStarted ? (
             <div className="text-center">
-              <span className="text-3xl font-bold tabular-nums text-gray-900 dark:text-white">
+              <span className="text-2xl font-bold tabular-nums text-gray-900 sm:text-3xl dark:text-white">
                 {game.awayScore}
-                <span className="mx-2 text-lg text-gray-400 dark:text-gray-600">–</span>
+                <span className="mx-1 text-base text-gray-400 sm:mx-2 sm:text-lg dark:text-gray-600">–</span>
                 {game.homeScore}
               </span>
             </div>
@@ -254,21 +255,22 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           {/* Home team */}
           <a
             href={homeId ? `/teams/${homeId}` : "#"}
-            className={`flex items-center justify-start gap-3 rounded-lg px-2 py-1 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${hasStarted && !homeWins && !isTied ? "opacity-50" : ""}`}
+            className={`flex min-w-0 items-center justify-start gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-gray-100 sm:gap-3 sm:px-2 dark:hover:bg-gray-800/40 ${hasStarted && !homeWins && !isTied ? "opacity-50" : ""}`}
           >
             {homeId && (
               <img
                 src={`/teams/${homeId}.svg`}
                 alt={game.homeAbbr}
-                className="h-10 w-10 flex-shrink-0 object-contain"
+                className="h-8 w-8 flex-shrink-0 object-contain sm:h-10 sm:w-10"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
               />
             )}
-            <div>
-              <div className={`font-semibold ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-300"}`}>
-                {homeTeam?.teamName ?? game.homeAbbr}
+            <div className="min-w-0">
+              <div className={`truncate text-sm font-semibold sm:text-base ${homeWins ? "text-gray-900 dark:text-white" : "text-gray-600 dark:text-gray-300"}`}>
+                <span className="sm:hidden">{game.homeAbbr}</span>
+                <span className="hidden sm:inline">{homeTeam?.teamName ?? game.homeAbbr}</span>
               </div>
               <div className="text-xs text-gray-500">{t("home")}</div>
             </div>

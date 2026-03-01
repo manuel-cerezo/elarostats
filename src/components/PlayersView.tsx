@@ -133,7 +133,7 @@ function PlayerRow({
       }}
     >
       <td className="px-3 py-2.5 text-sm font-medium text-gray-600">{rank}</td>
-      <td className="whitespace-nowrap px-3 py-2.5">
+      <td className="px-3 py-2.5 sm:whitespace-nowrap">
         <div className="flex items-center gap-2">
           <img
             src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${player.EntityId}.png`}
@@ -147,7 +147,7 @@ function PlayerRow({
           <span className="font-semibold text-gray-900 dark:text-white">{player.Name}</span>
         </div>
       </td>
-      <td className="whitespace-nowrap px-3 py-2.5">
+      <td className="hidden whitespace-nowrap px-3 py-2.5 sm:table-cell">
         <a
           href={`/teams/${player.TeamId}`}
           onClick={(e) => e.stopPropagation()}
@@ -169,13 +169,13 @@ function PlayerRow({
       <td className="px-3 py-2.5 text-center text-sm font-semibold text-orange-400">{ppg}</td>
       <td className="px-3 py-2.5 text-center text-sm text-gray-700 dark:text-gray-300">{rpg}</td>
       <td className="px-3 py-2.5 text-center text-sm text-gray-700 dark:text-gray-300">{apg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{spg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{bpg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-500">{mpg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{efg}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{ts}</td>
-      <td className="px-3 py-2.5 text-center text-sm text-gray-600 dark:text-gray-400">{fg3}</td>
-      <td className="px-3 py-2.5 text-center">
+      <td className="hidden px-3 py-2.5 text-center text-sm text-gray-600 sm:table-cell dark:text-gray-400">{spg}</td>
+      <td className="hidden px-3 py-2.5 text-center text-sm text-gray-600 sm:table-cell dark:text-gray-400">{bpg}</td>
+      <td className="hidden px-3 py-2.5 text-center text-sm text-gray-500 sm:table-cell">{mpg}</td>
+      <td className="hidden px-3 py-2.5 text-center text-sm text-gray-600 sm:table-cell dark:text-gray-400">{efg}</td>
+      <td className="hidden px-3 py-2.5 text-center text-sm text-gray-600 sm:table-cell dark:text-gray-400">{ts}</td>
+      <td className="hidden px-3 py-2.5 text-center text-sm text-gray-600 sm:table-cell dark:text-gray-400">{fg3}</td>
+      <td className="hidden px-3 py-2.5 text-center sm:table-cell">
         <span
           className={`text-sm font-medium ${
             player.PlusMinus > 0
@@ -301,15 +301,17 @@ export default function PlayersView() {
     label,
     sortK,
     title,
+    className: extraClass,
   }: {
     label: string;
     sortK: SortKey;
     title?: string;
+    className?: string;
   }) {
     const active = sortKey === sortK;
     return (
       <th
-        className="cursor-pointer whitespace-nowrap px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider transition-colors hover:text-orange-400"
+        className={`cursor-pointer whitespace-nowrap px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider transition-colors hover:text-orange-400 ${extraClass ?? ""}`}
         onClick={() => toggleSort(sortK)}
         title={title}
       >
@@ -392,19 +394,19 @@ export default function PlayersView() {
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                   {t("player")}
                 </th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th className="hidden px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 sm:table-cell">
                   {t("teamLabel")}
                 </th>
                 <SortHeader label="PPG" sortK="ppg" title={t("ppgTitle")} />
                 <SortHeader label="RPG" sortK="rpg" title={t("rpgTitle")} />
                 <SortHeader label="APG" sortK="apg" title={t("apgTitle")} />
-                <SortHeader label="SPG" sortK="spg" title={t("spgTitle")} />
-                <SortHeader label="BPG" sortK="bpg" title={t("bpgTitle")} />
-                <SortHeader label="MPG" sortK="mpg" title={t("mpgTitle")} />
-                <SortHeader label="eFG%" sortK="efgPct" title={t("efgPctTitle")} />
-                <SortHeader label="TS%" sortK="tsPct" title={t("tsPctTitle")} />
-                <SortHeader label="3P%" sortK="fg3Pct" title={t("fg3PctTitle")} />
-                <SortHeader label="+/-" sortK="plusMinus" title={t("plusMinusTitle")} />
+                <SortHeader label="SPG" sortK="spg" title={t("spgTitle")} className="hidden sm:table-cell" />
+                <SortHeader label="BPG" sortK="bpg" title={t("bpgTitle")} className="hidden sm:table-cell" />
+                <SortHeader label="MPG" sortK="mpg" title={t("mpgTitle")} className="hidden sm:table-cell" />
+                <SortHeader label="eFG%" sortK="efgPct" title={t("efgPctTitle")} className="hidden sm:table-cell" />
+                <SortHeader label="TS%" sortK="tsPct" title={t("tsPctTitle")} className="hidden sm:table-cell" />
+                <SortHeader label="3P%" sortK="fg3Pct" title={t("fg3PctTitle")} className="hidden sm:table-cell" />
+                <SortHeader label="+/-" sortK="plusMinus" title={t("plusMinusTitle")} className="hidden sm:table-cell" />
               </tr>
             </thead>
             <tbody>
