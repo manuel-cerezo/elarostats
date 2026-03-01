@@ -10,6 +10,7 @@ export interface CompletedGame {
   team_data: LiveGameResponse;
   player_data: LiveGameResponse;
   game_flow_data: LiveGameResponse;
+  pbp_data: LiveGameResponse | null;
   synced_at: string;
   game_date: string | null;
 }

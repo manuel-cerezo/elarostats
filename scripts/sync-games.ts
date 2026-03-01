@@ -104,7 +104,7 @@ async function fetchWithRetry(
 
 async function fetchGameResult(
   gameId: string,
-  resultType: "team" | "player" | "game-flow",
+  resultType: "team" | "player" | "game-flow" | "possession-by-possession",
 ): Promise<LiveGameResponse> {
   const url = `${PBPSTATS_BASE}/live/game/${gameId}/${resultType}`;
   const res = await fetchWithRetry(url, `${resultType} for ${gameId}`);
@@ -143,10 +143,11 @@ async function syncGame(
 ): Promise<void> {
   console.log(`  Fetching ${awayAbbr} @ ${homeAbbr} (${gameId})…`);
 
-  const [teamData, playerData, gameFlowData] = await Promise.all([
+  const [teamData, playerData, gameFlowData, pbpData] = await Promise.all([
     fetchGameResult(gameId, "team"),
     fetchGameResult(gameId, "player"),
     fetchGameResult(gameId, "game-flow"),
+    fetchGameResult(gameId, "possession-by-possession"),
   ]);
 
   const { error } = await supabase.from("game_stats").upsert(
@@ -159,6 +160,7 @@ async function syncGame(
       team_data: teamData,
       player_data: playerData,
       game_flow_data: gameFlowData,
+      pbp_data: pbpData,
       synced_at: new Date().toISOString(),
       game_date: gameDate,
     },

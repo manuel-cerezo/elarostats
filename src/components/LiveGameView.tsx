@@ -432,9 +432,10 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const teamQuery = useLiveGame(gameId, "team", isFinal, { enabled: shouldQueryPBP });
   const playerQuery = useLiveGame(gameId, "player", isFinal, { enabled: shouldQueryPBP });
   const flowQuery = useLiveGame(gameId, "game-flow", isFinal, { enabled: shouldQueryPBP });
-  // PBP is not cached in Supabase, so always fetch from PBPStats
+  // PBP: use Supabase cache if available, otherwise fetch from PBPStats
+  const hasCachedPbp = isFromSupabase && !!completedGame.data?.pbp_data;
   const pbpQuery = useLiveGame(gameId, "possession-by-possession", isFinal, {
-    enabled: Boolean(gameId) && (shouldQueryPBP || isFromSupabase),
+    enabled: Boolean(gameId) && (shouldQueryPBP || (isFromSupabase && !hasCachedPbp)),
   });
 
   // Prefer Supabase data; fall back to PBPStats for live games
@@ -504,8 +505,9 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const scoreMargins = flowGameData?.score_margins ?? [];
   const maxTime = flowGameData?.max_time ?? 2880;
 
-  // Play-by-play data
-  const pbpGameData = pbpQuery.data?.game_data as
+  // Play-by-play data — prefer Supabase cache, fall back to PBPStats
+  const pbpSource = hasCachedPbp ? completedGame.data!.pbp_data : pbpQuery.data;
+  const pbpGameData = pbpSource?.game_data as
     | { possessions?: Possession[] }
     | undefined;
   const possessions = pbpGameData?.possessions ?? [];
