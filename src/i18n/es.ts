@@ -149,4 +149,8 @@ export const es = {
   gameNotFound: "Partido no encontrado.",
   backToHome: "Volver al inicio",
   dataSource: "Fuente: pbpstats.com · Datos actualizados en tiempo real",
+
+  // Histórico de partidos
+  historicalGames: "Histórico",
+  noHistoricalGames: "No hay partidos históricos disponibles.",
 } as const;

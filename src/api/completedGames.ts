@@ -64,3 +64,49 @@ export async function fetchCompletedGame(gameId: string): Promise<CompletedGame 
 
   return data as CompletedGame;
 }
+
+/**
+ * Fetches all distinct game dates from Supabase, ordered newest first.
+ * Used to populate the historical games section.
+ */
+export async function fetchHistoricalGameDates(): Promise<string[]> {
+  if (!supabase) return [];
+
+  // Select all game_date values, ordered descending; deduplicate in JS
+  const { data, error } = await supabase
+    .from("game_stats")
+    .select("game_date")
+    .not("game_date", "is", null)
+    .order("game_date", { ascending: false });
+
+  if (error || !data) return [];
+
+  // Deduplicate (Supabase doesn't support SELECT DISTINCT via JS client)
+  const seen = new Set<string>();
+  const dates: string[] = [];
+  for (const row of data) {
+    const d = row.game_date as string;
+    if (!seen.has(d)) {
+      seen.add(d);
+      dates.push(d);
+    }
+  }
+
+  return dates;
+}
+
+/**
+ * Fetches all completed games for a specific date.
+ */
+export async function fetchGamesByDate(date: string): Promise<CompletedGame[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("game_stats")
+    .select("*")
+    .eq("game_date", date);
+
+  if (error || !data) return [];
+
+  return data as CompletedGame[];
+}

@@ -148,4 +148,8 @@ export const en = {
   gameNotFound: "Game not found.",
   backToHome: "Back to home",
   dataSource: "Source: pbpstats.com · Data updated in real-time",
+
+  // Historical games
+  historicalGames: "History",
+  noHistoricalGames: "No historical games available.",
 } as const;

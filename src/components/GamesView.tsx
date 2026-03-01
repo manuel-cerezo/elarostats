@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import teamsData from "../data/teams.json";
 import { useTranslation } from "../hooks/useTranslation";
 import { type ParsedLiveGame } from "../hooks/useLiveGamesData";
 import { useCompletedGame } from "../hooks/useCompletedGame";
-import { useTodayGames } from "../hooks/useTodayGames";
+import { useTodayGames, completedToParsed } from "../hooks/useTodayGames";
+import { useHistoricalGameDates, useGamesByDate } from "../hooks/useHistoricalGames";
 
 const PBPSTATS_BASE = "https://api.pbpstats.com";
 
@@ -319,6 +321,84 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
   );
 }
 
+// --- Historical day section ---
+
+function HistoricalDaySection({
+  date,
+  locale,
+  t,
+}: {
+  date: string;
+  locale: string;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const { data: games, isLoading } = useGamesByDate(date, isOpen);
+
+  // Format "YYYY-MM-DD" as a localized date string
+  const formattedDate = new Date(date + "T12:00:00").toLocaleDateString(
+    locale === "en" ? "en-US" : "es-ES",
+    { weekday: "long", year: "numeric", month: "long", day: "numeric" },
+  );
+
+  const parsedGames = games?.map(completedToParsed);
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700/50">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800/60"
+      >
+        <span className="text-sm font-semibold capitalize text-gray-700 dark:text-gray-200">
+          {formattedDate}
+        </span>
+        <div className="flex items-center gap-2">
+          {isOpen && parsedGames && (
+            <span className="text-xs text-gray-400">
+              {parsedGames.length} {parsedGames.length === 1 ? "game" : locale === "en" ? "games" : "partidos"}
+            </span>
+          )}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="border-t border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800/40 dark:bg-gray-950/30">
+          {isLoading && (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-32 animate-pulse rounded-2xl bg-gray-200 dark:bg-gray-800/40" />
+              ))}
+            </div>
+          )}
+          {parsedGames && parsedGames.length > 0 && (
+            <div className="space-y-4">
+              {parsedGames.map((game) => (
+                <GameCard key={game.gameId} game={game} t={t} />
+              ))}
+            </div>
+          )}
+          {parsedGames && parsedGames.length === 0 && (
+            <p className="text-center text-sm text-gray-500">{t("noHistoricalGames")}</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- Main component ---
 
 export default function GamesView() {
@@ -326,6 +406,9 @@ export default function GamesView() {
 
   // Supabase-first: uses cached games when available, falls back to PBPStats for live data
   const { data: games, isLoading, isError } = useTodayGames();
+
+  // Historical game dates from Supabase
+  const { data: historicalDates } = useHistoricalGameDates();
 
   if (isLoading) {
     return (
@@ -345,14 +428,6 @@ export default function GamesView() {
     );
   }
 
-  if (!games || games.length === 0) {
-    return (
-      <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-gray-700/50 dark:bg-gray-900">
-        {t("noGamesToday")}
-      </div>
-    );
-  }
-
   const today = new Date().toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
     weekday: "long",
     year: "numeric",
@@ -360,9 +435,16 @@ export default function GamesView() {
     day: "numeric",
   });
 
-  const liveGames = games.filter((g) => g.isLive);
-  const pregameGames = games.filter((g) => g.isPregame);
-  const finalGames = games.filter((g) => g.isFinal);
+  // Today in ET (YYYY-MM-DD) — used to exclude from historical list
+  const todayET = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+
+  const liveGames = games?.filter((g) => g.isLive) ?? [];
+  const pregameGames = games?.filter((g) => g.isPregame) ?? [];
+  const finalGames = games?.filter((g) => g.isFinal) ?? [];
+  const hasGamesToday = games != null && games.length > 0;
+
+  // Filter out today's date from historical dates to avoid duplication
+  const pastDates = historicalDates?.filter((d) => d !== todayET) ?? [];
 
   return (
     <div>
@@ -372,6 +454,12 @@ export default function GamesView() {
           <p className="mt-0.5 text-sm capitalize text-gray-500">{today}</p>
         </div>
       </div>
+
+      {!hasGamesToday && (
+        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-8 text-center text-gray-500 dark:border-gray-700/50 dark:bg-gray-900">
+          {t("noGamesToday")}
+        </div>
+      )}
 
       {liveGames.length > 0 && (
         <div className="mb-6">
@@ -401,13 +489,31 @@ export default function GamesView() {
       )}
 
       {finalGames.length > 0 && (
-        <div>
+        <div className="mb-6">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
             {t("finished")}
           </p>
           <div className="space-y-4">
             {finalGames.map((game) => (
               <GameCard key={game.gameId} game={game} t={t} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Historical games section */}
+      {pastDates.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700/50" />
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              {t("historicalGames")}
+            </p>
+            <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700/50" />
+          </div>
+          <div className="space-y-3">
+            {pastDates.map((date) => (
+              <HistoricalDaySection key={date} date={date} locale={locale} t={t} />
             ))}
           </div>
         </div>

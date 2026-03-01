@@ -5,7 +5,7 @@ import { useLiveGamesData, type ParsedLiveGame } from "./useLiveGamesData";
 /**
  * Convert a Supabase CompletedGame into the ParsedLiveGame shape used by the UI.
  */
-function completedToParsed(game: CompletedGame): ParsedLiveGame {
+export function completedToParsed(game: CompletedGame): ParsedLiveGame {
   return {
     gameId: game.game_id,
     time: "Final",
