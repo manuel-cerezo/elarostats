@@ -80,66 +80,69 @@ export default function PlayerStatsPage({ player }: PlayerStatsPageProps) {
         </div>
       </div>
 
-      {/* ── Impact ── */}
-      <div className="mt-6 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/60">
-        <div className="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {t("impact")}
-          </span>
+      {/* ── Impact + Scoring: side-by-side on desktop ── */}
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Impact */}
+        <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/60">
+          <div className="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {t("impact")}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+            <div className="px-4 py-3 text-center">
+              <p className="text-[10px] font-medium uppercase text-gray-400">DPM</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums">
+                <ValueColor value={player.dpm} format="signed" />
+              </p>
+            </div>
+            <div className="px-4 py-3 text-center">
+              <p className="text-[10px] font-medium uppercase text-gray-400">O-DPM</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums">
+                <ValueColor value={player.o_dpm} format="signed" />
+              </p>
+            </div>
+            <div className="border-t border-gray-200 px-4 py-3 text-center dark:border-gray-700">
+              <p className="text-[10px] font-medium uppercase text-gray-400">D-DPM</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums">
+                <ValueColor value={player.d_dpm} format="signed" />
+              </p>
+            </div>
+            <div className="border-t border-gray-200 px-4 py-3 text-center dark:border-gray-700">
+              <p className="text-[10px] font-medium uppercase text-gray-400">3yr RAPM</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums">
+                <ValueColor value={player.three_year_rapm} format="signed" />
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700 sm:grid-cols-4">
-          <div className="px-4 py-3 text-center">
-            <p className="text-[10px] font-medium uppercase text-gray-400">DPM</p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums">
-              <ValueColor value={player.dpm} format="signed" />
-            </p>
-          </div>
-          <div className="px-4 py-3 text-center">
-            <p className="text-[10px] font-medium uppercase text-gray-400">O-DPM</p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums">
-              <ValueColor value={player.o_dpm} format="signed" />
-            </p>
-          </div>
-          <div className="border-t border-gray-200 px-4 py-3 text-center dark:border-gray-700 sm:border-t-0">
-            <p className="text-[10px] font-medium uppercase text-gray-400">D-DPM</p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums">
-              <ValueColor value={player.d_dpm} format="signed" />
-            </p>
-          </div>
-          <div className="border-t border-gray-200 px-4 py-3 text-center dark:border-gray-700 sm:border-t-0">
-            <p className="text-[10px] font-medium uppercase text-gray-400">3yr RAPM</p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums">
-              <ValueColor value={player.three_year_rapm} format="signed" />
-            </p>
-          </div>
-        </div>
-      </div>
 
-      {/* ── Scoring ── */}
-      <div className="mt-4 rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/60">
-        <div className="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {t("scoring")}
-          </span>
-        </div>
-        <div className="grid grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700">
-          <div className="px-4 py-3 text-center">
-            <p className="text-[10px] font-medium uppercase text-gray-400">Pts/75</p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900 dark:text-white">
-              {stats.pts75}
-            </p>
+        {/* Scoring */}
+        <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/60">
+          <div className="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {t("scoring")}
+            </span>
           </div>
-          <div className="px-4 py-3 text-center">
-            <p className="text-[10px] font-medium uppercase text-gray-400">3P%</p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900 dark:text-white">
-              {stats.threePct}
-            </p>
-          </div>
-          <div className="px-4 py-3 text-center">
-            <p className="text-[10px] font-medium uppercase text-gray-400">FT%</p>
-            <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900 dark:text-white">
-              {stats.ftPct}
-            </p>
+          <div className="grid grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700">
+            <div className="px-4 py-3 text-center">
+              <p className="text-[10px] font-medium uppercase text-gray-400">Pts/75</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900 dark:text-white">
+                {stats.pts75}
+              </p>
+            </div>
+            <div className="px-4 py-3 text-center">
+              <p className="text-[10px] font-medium uppercase text-gray-400">3P%</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900 dark:text-white">
+                {stats.threePct}
+              </p>
+            </div>
+            <div className="px-4 py-3 text-center">
+              <p className="text-[10px] font-medium uppercase text-gray-400">FT%</p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-gray-900 dark:text-white">
+                {stats.ftPct}
+              </p>
+            </div>
           </div>
         </div>
       </div>
