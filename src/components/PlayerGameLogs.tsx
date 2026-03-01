@@ -1,6 +1,9 @@
 import { useState, useMemo } from "react";
 import { useGameLogs } from "../hooks/useGameLogs";
 import { useTranslation } from "../hooks/useTranslation";
+import teamsData from "../data/teams.json";
+
+const abbrToTeamId = new Map<string, number>(teamsData.map((t) => [t.abbreviation, t.teamId]));
 
 // --- Types ---
 
@@ -280,7 +283,19 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
                   </a>
                 </td>
                 <td className="whitespace-nowrap px-2 py-2 text-left font-medium text-gray-700 dark:text-gray-200">
-                  {log.opponent}
+                  {(() => {
+                    const teamId = abbrToTeamId.get(log.opponent.toUpperCase());
+                    return teamId ? (
+                      <a
+                        href={`/teams/${teamId}`}
+                        className="transition-colors hover:text-orange-400"
+                      >
+                        {log.opponent}
+                      </a>
+                    ) : (
+                      log.opponent
+                    );
+                  })()}
                 </td>
                 <td className="px-2 py-2 text-right font-semibold text-gray-900 dark:text-white">
                   {log.pts}
