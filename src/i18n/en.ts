@@ -105,6 +105,7 @@ export const en = {
   gameFlowMargin: "Margin",
 
   // Game logs
+  all: "All",
   gameLogs: "Game Log",
   gameLogsDate: "Date",
   gameLogsOpponent: "Opp",

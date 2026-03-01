@@ -108,6 +108,7 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
   const { t, locale } = useTranslation();
   const [sortCol, setSortCol] = useState<SortCol>("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [wlFilter, setWlFilter] = useState<"all" | "W" | "L">("all");
 
   const logs = useMemo<ParsedLog[]>(() => {
     if (!data?.multi_row_table_data) return [];
@@ -203,6 +204,14 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
     });
   }, [logs, sortCol, sortDir]);
 
+  const filtered = useMemo(
+    () => (wlFilter === "all" ? sorted : sorted.filter((l) => l.wl === wlFilter)),
+    [sorted, wlFilter],
+  );
+
+  const winsCount = useMemo(() => logs.filter((l) => l.wl === "W").length, [logs]);
+  const lossesCount = useMemo(() => logs.filter((l) => l.wl === "L").length, [logs]);
+
   function handleSort(col: SortCol) {
     if (sortCol === col) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
@@ -238,9 +247,39 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
 
   return (
     <div className="mt-10">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-        {t("gameLogs")}
-      </p>
+      <div className="mb-3 flex items-center gap-3">
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
+          {t("gameLogs")}
+        </p>
+        <div className="flex gap-1">
+          {(["all", "W", "L"] as const).map((val) => {
+            const isActive = wlFilter === val;
+            const label =
+              val === "all"
+                ? `${t("all")} (${logs.length})`
+                : val === "W"
+                  ? `W (${winsCount})`
+                  : `L (${lossesCount})`;
+            return (
+              <button
+                key={val}
+                onClick={() => setWlFilter(val)}
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors ${
+                  isActive
+                    ? val === "W"
+                      ? "bg-green-500/15 text-green-500"
+                      : val === "L"
+                        ? "bg-red-400/15 text-red-400"
+                        : "bg-orange-400/15 text-orange-400"
+                    : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/40">
         <table className="w-full text-xs">
           <thead>
@@ -283,7 +322,7 @@ export default function PlayerGameLogs({ nbaId }: PlayerGameLogsProps) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((log) => (
+            {filtered.map((log) => (
               <tr
                 key={`${log.gameId}-${log.date}`}
                 className="border-t border-gray-100 text-gray-600 hover:bg-gray-50 dark:border-gray-700/50 dark:text-gray-300 dark:hover:bg-gray-700/30"
