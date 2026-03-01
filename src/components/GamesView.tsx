@@ -1,11 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import teamsData from "../data/teams.json";
 import { useTranslation } from "../hooks/useTranslation";
-import {
-  useLiveGamesData,
-  type ParsedLiveGame,
-} from "../hooks/useLiveGamesData";
+import { type ParsedLiveGame } from "../hooks/useLiveGamesData";
 import { useCompletedGame } from "../hooks/useCompletedGame";
+import { useTodayGames } from "../hooks/useTodayGames";
 
 const PBPSTATS_BASE = "https://api.pbpstats.com";
 
@@ -126,10 +124,15 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
   );
   const isFromSupabase = game.isFinal && completedFetched && completedGame != null;
 
-  // Only call PBPStats if the game has started AND it's not already cached in Supabase
+  // For final games, wait for Supabase to respond before considering PBPStats fallback.
+  // This avoids a race condition where PBPStats fires while Supabase is still loading.
+  const needsPbpDetail = game.isFinal
+    ? completedFetched && completedGame == null // Supabase checked, no data → fall back
+    : hasStarted; // Live/pregame → use PBPStats directly
+
   const { data: detail, isLoading: detailLoading } = useGameDetail(
     game.gameId,
-    hasStarted && !isFromSupabase,
+    needsPbpDetail,
     game.isFinal,
   );
 
@@ -309,8 +312,8 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
 export default function GamesView() {
   const { t, locale } = useTranslation();
 
-  // Shared hook — same cache key as LiveScores, no duplicate requests
-  const { data: games, isLoading, isError } = useLiveGamesData();
+  // Supabase-first: uses cached games when available, falls back to PBPStats for live data
+  const { data: games, isLoading, isError } = useTodayGames();
 
   if (isLoading) {
     return (
