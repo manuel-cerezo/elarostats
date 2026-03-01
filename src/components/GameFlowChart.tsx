@@ -81,18 +81,6 @@ function buildChartData(margins: ScoreMargin[]): ChartPoint[] {
   return deduped;
 }
 
-function formatTime(seconds: number, maxTime: number): string {
-  if (seconds <= 0) return "Start";
-  const markers = buildQuarterMarkers(maxTime);
-  for (const m of markers) {
-    if (Math.abs(seconds - m.time) < 5) return m.label;
-  }
-  const quarter = Math.min(Math.ceil(seconds / QUARTER_SECONDS), 4);
-  const inQuarter = seconds - (quarter - 1) * QUARTER_SECONDS;
-  const minutes = Math.floor(inQuarter / 60);
-  return `Q${quarter} ${minutes}'`;
-}
-
 // --- Custom tooltip ---
 
 interface TooltipPayloadItem {

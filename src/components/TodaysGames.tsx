@@ -24,7 +24,7 @@ function GameCard({ game, onClick }: GameCardProps) {
   return (
     <button
       onClick={() => onClick(game.gameid)}
-      aria-label={`${game.awayTeam} at ${game.homeTeam}`}
+      aria-label={`${game.awayTeam} ${t("vsLabel")} ${game.homeTeam}`}
       className="flex min-w-[250px] flex-col gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-orange-500/50 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800"
     >
       {/* Matchup row: away | score | home */}
@@ -49,7 +49,7 @@ function GameCard({ game, onClick }: GameCardProps) {
             {game.homeScore}
           </span>
         ) : (
-          <span className="text-center text-xs text-gray-500">vs</span>
+          <span className="text-center text-xs text-gray-500">{t("vsLabel")}</span>
         )}
 
         {/* Home — left-aligned */}

@@ -51,7 +51,7 @@ function getStatValue(
   return row ? row[side] : undefined;
 }
 
-// Key stats we display
+// Key stats we display — keys match PBPStats API field names
 const DISPLAY_STATS = [
   "Points",
   "eFG%",
@@ -64,6 +64,20 @@ const DISPLAY_STATS = [
   "Second Chance Points",
   "Penalty Points",
 ] as const;
+
+// i18n labels for DISPLAY_STATS (keys match the API stat names above)
+const STAT_LABEL_KEYS: Record<string, string> = {
+  Points: "statPoints",
+  "eFG%": "statEfgPct",
+  "TS%": "statTsPct",
+  "3pt FG%": "stat3ptFgPct",
+  "FT%": "statFtPct",
+  "Offensive Rating": "statOffRtg",
+  Possessions: "statPossessions",
+  "Assist Points": "statAssistPts",
+  "Second Chance Points": "statSecondChancePts",
+  "Penalty Points": "statPenaltyPts",
+};
 
 function formatStatValue(value: string | number | undefined): string {
   if (value === undefined) return "—";
@@ -177,7 +191,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
           )}
           {gameInfo && gameInfo.home_win_probability != null && (
             <span className="text-xs text-gray-400">
-              WP: {gameInfo.visitor_win_probability}% – {gameInfo.home_win_probability}%
+              {t("winProbabilityShort")}: {gameInfo.visitor_win_probability}% – {gameInfo.home_win_probability}%
             </span>
           )}
         </div>
@@ -249,7 +263,7 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
               </span>
             </div>
           ) : (
-            <span className="text-center text-sm text-gray-500">vs</span>
+            <span className="text-center text-sm text-gray-500">{t("vsLabel")}</span>
           )}
 
           {/* Home team */}
@@ -289,10 +303,11 @@ function GameCard({ game, t }: { game: ParsedLiveGame; t: ReturnType<typeof useT
               const home = getStatValue(rows, statName, "home");
               const away = getStatValue(rows, statName, "visitor");
               if (home === undefined && away === undefined) return null;
+              const labelKey = STAT_LABEL_KEYS[statName];
               return (
                 <StatRow
                   key={statName}
-                  label={statName}
+                  label={labelKey ? t(labelKey) : statName}
                   home={formatStatValue(home)}
                   away={formatStatValue(away)}
                 />
@@ -358,7 +373,7 @@ function HistoricalDaySection({
         <div className="flex items-center gap-2">
           {isOpen && parsedGames && (
             <span className="text-xs text-gray-400">
-              {parsedGames.length} {parsedGames.length === 1 ? "game" : locale === "en" ? "games" : "partidos"}
+              {parsedGames.length} {parsedGames.length === 1 ? t("gameCountSingular") : t("gameCountPlural")}
             </span>
           )}
           <svg

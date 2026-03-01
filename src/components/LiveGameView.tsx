@@ -321,7 +321,7 @@ function PlayerTableContent({ players, playersByNbaId }: PlayerTableContentProps
                     {p.name}
                   </span>
                   {p.isOnCourt && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-400" title="En pista" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400" title={t("onCourt")} />
                   )}
                 </div>
               </div>

@@ -9,6 +9,7 @@ export const en = {
   search: "Search",
   searchPlaceholder: "Search a player...",
   searchPlaceholderFull: "Search a player or team...",
+  searchResults: "Search results",
   loadingPlayers: "Loading players...",
 
   // Home
@@ -44,13 +45,30 @@ export const en = {
   upcoming: "Upcoming",
   finished: "Final",
   finalStatus: "Final",
+  vsLabel: "vs",
+  winProbabilityShort: "WP",
+  gameCountSingular: "game",
+  gameCountPlural: "games",
   teamLabel: "Team",
   away: "Away",
   home: "Home",
   leaders: "Leaders",
   teamStats: "Team Stats",
+  onCourt: "On court",
   errorLoadingGames: "Could not load games.",
   noGamesToday: "No games scheduled today.",
+
+  // Game stats comparison
+  statPoints: "Points",
+  statEfgPct: "eFG%",
+  statTsPct: "TS%",
+  stat3ptFgPct: "3pt FG%",
+  statFtPct: "FT%",
+  statOffRtg: "Off. Rating",
+  statPossessions: "Possessions",
+  statAssistPts: "Assist Pts",
+  statSecondChancePts: "2nd Chance Pts",
+  statPenaltyPts: "Penalty Pts",
 
   // Navigation accessibility
   openMenu: "Open menu",

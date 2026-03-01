@@ -1,4 +1,5 @@
 import type { SearchResult } from "../hooks/useSearch";
+import { useTranslation } from "../hooks/useTranslation";
 
 interface SearchDropdownProps {
   results: SearchResult[];
@@ -13,12 +14,14 @@ export default function SearchDropdown({
   onSelect,
   onHover,
 }: SearchDropdownProps) {
+  const { t } = useTranslation();
+
   if (results.length === 0) return null;
 
   return (
     <ul
       role="listbox"
-      aria-label="Search results"
+      aria-label={t("searchResults")}
       className="absolute top-full z-10 mt-1 w-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900"
     >
       {results.map((result, index) => {
