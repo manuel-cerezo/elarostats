@@ -9,7 +9,7 @@
  *
  *   npm run sync:gamelogs
  *
- * Volume: ~500 players + 30 teams → ~530 API calls (~3 min with rate limiting).
+ * Volume: ~500 players + 30 teams → ~530 API calls (~9 min with 1s rate limiting).
  * Each call returns all games for that entity in the season (~60–80 rows).
  */
 
@@ -32,7 +32,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const PBPSTATS_BASE = "https://api.pbpstats.com";
 const DEFAULT_SEASON = "2025-26";
 const DEFAULT_SEASON_TYPE = "Regular+Season";
-const RATE_LIMIT_MS = 300; // delay between API calls to avoid hammering PBPStats
+const RATE_LIMIT_MS = 1_000; // 1s delay between API calls to avoid PBPStats 503s
 const BATCH_SIZE = 100;
 
 // ---------------------------------------------------------------------------
