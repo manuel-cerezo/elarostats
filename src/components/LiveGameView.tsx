@@ -701,19 +701,19 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
           <p className="text-center text-sm text-gray-500">{t("gameNotStarted")}</p>
         </div>
       ) : (
-        <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
-          {/* Game Flow Chart — always visible */}
-          {scoreMargins.length > 0 && (
-            <GameFlowChart
-              margins={scoreMargins}
-              maxTime={maxTime}
-              homeAbbr={home.abbr}
-              awayAbbr={away.abbr}
-            />
-          )}
-
-          {/* Box Score content (hidden on mobile when PBP tab active) */}
+        <div className="mx-auto max-w-[1440px] px-4 py-6 lg:grid lg:grid-cols-[1fr_400px] lg:gap-6">
+          {/* ── Left column: Flow + Stats + Players ── */}
           <div className={`space-y-6 ${mobileTab === "pbp" ? "hidden lg:block" : ""}`}>
+            {/* Game Flow Chart */}
+            {scoreMargins.length > 0 && (
+              <GameFlowChart
+                margins={scoreMargins}
+                maxTime={maxTime}
+                homeAbbr={home.abbr}
+                awayAbbr={away.abbr}
+              />
+            )}
+
             {/* Team Stats Comparison */}
             {hasTeamStats && (
               <TeamStatsComparison
@@ -734,8 +734,8 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
             />
           </div>
 
-          {/* Play-by-Play (hidden on mobile when box score tab active) */}
-          <div className={mobileTab === "boxscore" ? "hidden lg:block" : ""}>
+          {/* ── Right column: Play-by-Play (sticky on desktop) ── */}
+          <div className={`${mobileTab === "boxscore" ? "hidden lg:block" : ""} lg:self-start lg:sticky lg:top-28`}>
             {possessions.length > 0 && (
               <PlayByPlay
                 possessions={possessions}
