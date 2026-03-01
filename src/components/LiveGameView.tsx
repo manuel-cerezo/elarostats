@@ -36,79 +36,104 @@ function num(data: unknown, key: string): number {
   return typeof val === "number" ? val : 0;
 }
 
-interface TeamStatsBoxProps {
-  label: string;
-  abbr: string;
-  score: number;
-  stats: Record<string, unknown>;
+// --- Team Stats Comparison ---
+
+interface TeamStatsComparisonProps {
+  awayAbbr: string;
+  homeAbbr: string;
+  awayStats: Record<string, unknown>;
+  homeStats: Record<string, unknown>;
 }
 
-function TeamStatsBox({ label, abbr, score, stats }: TeamStatsBoxProps) {
-  const logo = teamLogoUrl(abbr);
-  const teamUrl = teamPageUrl(abbr);
-  const fgm = num(stats, "FGM");
-  const fga = num(stats, "FGA");
-  const fg3m = num(stats, "FG3M");
-  const fg3a = num(stats, "FG3A");
-  const fta = num(stats, "FTA");
-  const reb = num(stats, "Rebounds");
-  const ast = num(stats, "Assists");
-  const stl = num(stats, "Steals");
-  const blk = num(stats, "Blocks");
-  const tov = num(stats, "Turnovers");
+function TeamStatsComparison({ awayAbbr, homeAbbr, awayStats, homeStats }: TeamStatsComparisonProps) {
+  const awayLogo = teamLogoUrl(awayAbbr);
+  const homeLogo = teamLogoUrl(homeAbbr);
+  const awayUrl = teamPageUrl(awayAbbr);
+  const homeUrl = teamPageUrl(homeAbbr);
+  const { t } = useTranslation();
+
+  const fgmA = num(awayStats, "FGM"), fgaA = num(awayStats, "FGA");
+  const fgmH = num(homeStats, "FGM"), fgaH = num(homeStats, "FGA");
+  const fg3mA = num(awayStats, "FG3M"), fg3aA = num(awayStats, "FG3A");
+  const fg3mH = num(homeStats, "FG3M"), fg3aH = num(homeStats, "FG3A");
+
+  const fgPctA = fgaA > 0 ? (fgmA / fgaA) * 100 : 0;
+  const fgPctH = fgaH > 0 ? (fgmH / fgaH) * 100 : 0;
+  const fg3PctA = fg3aA > 0 ? (fg3mA / fg3aA) * 100 : 0;
+  const fg3PctH = fg3aH > 0 ? (fg3mH / fg3aH) * 100 : 0;
+
+  if (fgaA === 0 && fgaH === 0) return null;
+
+  const rows: { label: string; awayVal: string; homeVal: string; awayPct?: number; homePct?: number }[] = [
+    { label: "FG%", awayVal: `${fgPctA.toFixed(1)}%`, homeVal: `${fgPctH.toFixed(1)}%`, awayPct: fgPctA, homePct: fgPctH },
+    { label: "3P%", awayVal: `${fg3PctA.toFixed(1)}%`, homeVal: `${fg3PctH.toFixed(1)}%`, awayPct: fg3PctA, homePct: fg3PctH },
+    { label: "FTA", awayVal: String(num(awayStats, "FTA")), homeVal: String(num(homeStats, "FTA")) },
+    { label: "REB", awayVal: String(num(awayStats, "Rebounds")), homeVal: String(num(homeStats, "Rebounds")) },
+    { label: "AST", awayVal: String(num(awayStats, "Assists")), homeVal: String(num(homeStats, "Assists")) },
+    { label: "STL/BLK", awayVal: `${num(awayStats, "Steals")}/${num(awayStats, "Blocks")}`, homeVal: `${num(homeStats, "Steals")}/${num(homeStats, "Blocks")}` },
+    { label: "TOV", awayVal: String(num(awayStats, "Turnovers")), homeVal: String(num(homeStats, "Turnovers")) },
+  ];
+
+  const TeamLink = ({ abbr, logo, side }: { abbr: string; logo?: string; side: "away" | "home" }) => {
+    const url = side === "away" ? awayUrl : homeUrl;
+    const content = (
+      <div className={`flex items-center gap-2 ${side === "home" ? "flex-row-reverse" : ""}`}>
+        {logo && <img src={logo} alt={abbr} className="h-6 w-6 object-contain" />}
+        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{abbr}</span>
+      </div>
+    );
+    return url ? (
+      <a href={url} className="transition-opacity hover:opacity-75">{content}</a>
+    ) : content;
+  };
 
   return (
-    <div className="flex flex-1 flex-col items-center gap-3 rounded-xl bg-gray-100 p-4 dark:bg-gray-800/60">
-      <span className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</span>
-      <div className="flex items-center gap-3">
-        {logo && <img src={logo} alt={abbr} className="h-10 w-10 object-contain" />}
-        <span className="text-4xl font-black text-gray-900 dark:text-white">{score}</span>
+    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800/60">
+      <div className="mb-3 flex items-center justify-between">
+        <TeamLink abbr={awayAbbr} logo={awayLogo} side="away" />
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          {t("teamStats")}
+        </span>
+        <TeamLink abbr={homeAbbr} logo={homeLogo} side="home" />
       </div>
-      {teamUrl ? (
-        <a href={teamUrl} className="text-sm font-semibold text-gray-600 transition-colors hover:text-orange-400 dark:text-gray-300">
-          {abbr}
-        </a>
-      ) : (
-        <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">{abbr}</p>
-      )}
-      {fga > 0 && (
-        <div className="w-full space-y-1 border-t border-gray-200 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-          <div className="flex justify-between">
-            <span>FG</span>
-            <span className="font-medium text-gray-700 dark:text-gray-200">
-              {fgm}/{fga} ({fga > 0 ? ((fgm / fga) * 100).toFixed(1) : "0.0"}%)
+
+      <div className="space-y-2">
+        {rows.map(({ label, awayVal, homeVal, awayPct, homePct }) => (
+          <div key={label} className="flex items-center gap-2 text-xs">
+            <span className="w-14 text-right font-semibold tabular-nums text-gray-700 dark:text-gray-200">
+              {awayVal}
+            </span>
+            <div className="flex flex-1 items-center gap-1">
+              {awayPct !== undefined && homePct !== undefined ? (
+                <>
+                  <div className="flex h-1.5 flex-1 justify-end">
+                    <div
+                      className="rounded-full bg-blue-400/60"
+                      style={{ width: `${Math.max(awayPct, 2)}%` }}
+                    />
+                  </div>
+                  <span className="w-12 text-center text-[10px] font-medium text-gray-400">
+                    {label}
+                  </span>
+                  <div className="flex h-1.5 flex-1">
+                    <div
+                      className="rounded-full bg-orange-400/60"
+                      style={{ width: `${Math.max(homePct, 2)}%` }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <span className="flex-1 text-center text-[10px] font-medium text-gray-400">
+                  {label}
+                </span>
+              )}
+            </div>
+            <span className="w-14 text-left font-semibold tabular-nums text-gray-700 dark:text-gray-200">
+              {homeVal}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span>3P</span>
-            <span className="font-medium text-gray-700 dark:text-gray-200">
-              {fg3m}/{fg3a} ({fg3a > 0 ? ((fg3m / fg3a) * 100).toFixed(1) : "0.0"}%)
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>FTA</span>
-            <span className="font-medium text-gray-700 dark:text-gray-200">{fta}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>REB</span>
-            <span className="font-medium text-gray-700 dark:text-gray-200">{reb}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>AST</span>
-            <span className="font-medium text-gray-700 dark:text-gray-200">{ast}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>STL/BLK</span>
-            <span className="font-medium text-gray-700 dark:text-gray-200">
-              {stl}/{blk}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>TOV</span>
-            <span className="font-medium text-gray-700 dark:text-gray-200">{tov}</span>
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
@@ -204,16 +229,14 @@ function SortIndicator({ col, active, dir }: { col: SortCol; active: SortCol; di
   );
 }
 
-interface PlayerTableProps {
-  label: string;
-  abbr: string;
+// --- Player Table (used inside tabbed wrapper) ---
+
+interface PlayerTableContentProps {
   players: LivePlayer[];
   playersByNbaId: Map<string, Player>;
 }
 
-function PlayerTable({ label, abbr, players, playersByNbaId }: PlayerTableProps) {
-  const logo = teamLogoUrl(abbr);
-  const teamUrl = teamPageUrl(abbr);
+function PlayerTableContent({ players, playersByNbaId }: PlayerTableContentProps) {
   const { t } = useTranslation();
   const [sortCol, setSortCol] = useState<SortCol>("pts");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -246,20 +269,7 @@ function PlayerTable({ label, abbr, players, playersByNbaId }: PlayerTableProps)
   if (players.length === 0) return null;
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/40">
-      <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-        {teamUrl ? (
-          <a href={teamUrl} className="flex items-center gap-2 transition-opacity hover:opacity-75">
-            {logo && <img src={logo} alt={abbr} className="h-5 w-5 object-contain" />}
-            <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">{label}</span>
-          </a>
-        ) : (
-          <>
-            {logo && <img src={logo} alt={abbr} className="h-5 w-5 object-contain" />}
-            <span className="text-sm font-semibold text-gray-900 dark:text-gray-200">{label}</span>
-          </>
-        )}
-      </div>
+    <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-gray-500">
@@ -358,6 +368,59 @@ function PlayerTable({ label, abbr, players, playersByNbaId }: PlayerTableProps)
   );
 }
 
+// --- Tabbed Player Table ---
+
+interface TabbedPlayerTableProps {
+  awayAbbr: string;
+  homeAbbr: string;
+  awayPlayers: LivePlayer[];
+  homePlayers: LivePlayer[];
+  playersByNbaId: Map<string, Player>;
+}
+
+function TabbedPlayerTable({ awayAbbr, homeAbbr, awayPlayers, homePlayers, playersByNbaId }: TabbedPlayerTableProps) {
+  const [activeTeam, setActiveTeam] = useState<"away" | "home">("away");
+  const awayLogo = teamLogoUrl(awayAbbr);
+  const homeLogo = teamLogoUrl(homeAbbr);
+
+  if (awayPlayers.length === 0 && homePlayers.length === 0) return null;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800/40">
+      <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => setActiveTeam("away")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            activeTeam === "away"
+              ? "border-b-2 border-orange-400 text-orange-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+        >
+          {awayLogo && <img src={awayLogo} alt={awayAbbr} className="h-5 w-5 object-contain" />}
+          {awayAbbr}
+        </button>
+        <button
+          onClick={() => setActiveTeam("home")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+            activeTeam === "home"
+              ? "border-b-2 border-orange-400 text-orange-400"
+              : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+        >
+          {homeLogo && <img src={homeLogo} alt={homeAbbr} className="h-5 w-5 object-contain" />}
+          {homeAbbr}
+        </button>
+      </div>
+      <PlayerTableContent
+        players={activeTeam === "away" ? awayPlayers : homePlayers}
+        playersByNbaId={playersByNbaId}
+      />
+    </div>
+  );
+}
+
+// --- Last Updated ---
+
 function LastUpdated({ dataUpdatedAt }: { dataUpdatedAt: number }) {
   const [secondsAgo, setSecondsAgo] = useState(0);
   const { t } = useTranslation();
@@ -396,6 +459,8 @@ function formatGameDate(dateStr: string | null | undefined, locale: string): str
   }
 }
 
+// --- Main Component ---
+
 interface LiveGameViewProps {
   gameId: string;
 }
@@ -403,16 +468,13 @@ interface LiveGameViewProps {
 export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const { data: allPlayers } = useAllPlayers();
   const { t, locale } = useTranslation();
+  const [mobileTab, setMobileTab] = useState<"boxscore" | "pbp">("boxscore");
 
   // --- Supabase cache check (completed games) ---
-  // Always runs first; fast primary-key lookup. If data is found here, PBPStats
-  // queries are skipped entirely — no unnecessary polling for finished games.
   const completedGame = useCompletedGame(gameId);
   const isFromSupabase = completedGame.isFetched && !!completedGame.data;
   const shouldQueryPBP = completedGame.isFetched && !completedGame.data;
 
-  // Only fetch the full games list when the game isn't in Supabase (live games).
-  // This avoids a redundant PBPStats call on completed-game pages.
   const { data: games } = useTodaysGames({ enabled: shouldQueryPBP });
   const gameInfo = games?.find((g) => g.gameid === gameId);
 
@@ -421,7 +483,6 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const time = isFromSupabase ? t("finalStatus") : (gameInfo?.time ?? "");
   const isFinal = isFromSupabase || (gameInfo?.isFinal ?? false);
 
-  // When data comes from Supabase, use the cached team info directly
   const home = isFromSupabase
     ? { abbr: completedGame.data!.home_team_abbr, score: completedGame.data!.home_score ?? 0 }
     : parseTeamField(homeRaw);
@@ -432,13 +493,11 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const teamQuery = useLiveGame(gameId, "team", isFinal, { enabled: shouldQueryPBP });
   const playerQuery = useLiveGame(gameId, "player", isFinal, { enabled: shouldQueryPBP });
   const flowQuery = useLiveGame(gameId, "game-flow", isFinal, { enabled: shouldQueryPBP });
-  // PBP: use Supabase cache if available, otherwise fetch from PBPStats
   const hasCachedPbp = isFromSupabase && !!completedGame.data?.pbp_data;
   const pbpQuery = useLiveGame(gameId, "possession-by-possession", isFinal, {
     enabled: Boolean(gameId) && (shouldQueryPBP || (isFromSupabase && !hasCachedPbp)),
   });
 
-  // Prefer Supabase data; fall back to PBPStats for live games
   const teamData = isFromSupabase ? completedGame.data!.team_data : teamQuery.data;
   const playerData = isFromSupabase ? completedGame.data!.player_data : playerQuery.data;
   const flowData = isFromSupabase ? completedGame.data!.game_flow_data : flowQuery.data;
@@ -446,29 +505,18 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
   const gameNotStarted = teamData?.status === "error" || !teamData?.game_data;
 
   const teamGameData = teamData?.game_data as
-    | {
-        Away?: { FullGame?: Record<string, unknown> };
-        Home?: { FullGame?: Record<string, unknown> };
-      }
+    | { Away?: { FullGame?: Record<string, unknown> }; Home?: { FullGame?: Record<string, unknown> } }
     | undefined;
 
   const awayTeamStats = teamGameData?.Away?.FullGame ?? {};
   const homeTeamStats = teamGameData?.Home?.FullGame ?? {};
 
-  // Use game_info from detail endpoints for more accurate/synced scores.
-  // When data comes from Supabase, home.score/away.score are already final.
   const detailGameInfo = (playerData?.game_data as { game_info?: { home_score?: number; visitor_score?: number } } | undefined)?.game_info;
   const homeScore = isFromSupabase ? home.score : (detailGameInfo?.home_score ?? home.score);
   const awayScore = isFromSupabase ? away.score : (detailGameInfo?.visitor_score ?? away.score);
 
-  // Player data from PBPStats (wide-format: stat rows x player ID columns)
   const playerGameData = playerData?.game_data as
-    | {
-        home_rows?: PbpStatsStatRow[];
-        visitor_rows?: PbpStatsStatRow[];
-        home_headers?: PbpStatsHeader[];
-        visitor_headers?: PbpStatsHeader[];
-      }
+    | { home_rows?: PbpStatsStatRow[]; visitor_rows?: PbpStatsStatRow[]; home_headers?: PbpStatsHeader[]; visitor_headers?: PbpStatsHeader[] }
     | undefined;
 
   const homePlayers = useMemo(
@@ -487,7 +535,6 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
     [playerGameData?.visitor_headers, playerGameData?.visitor_rows],
   );
 
-  // Map nba_id (string) -> Player for cross-referencing with Supabase
   const playersByNbaId = useMemo(() => {
     const map = new Map<string, Player>();
     if (allPlayers) {
@@ -498,14 +545,12 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
     return map;
   }, [allPlayers]);
 
-  // Game flow chart data
   const flowGameData = flowData?.game_data as
     | { score_margins?: ScoreMargin[]; max_time?: number }
     | undefined;
   const scoreMargins = flowGameData?.score_margins ?? [];
   const maxTime = flowGameData?.max_time ?? 2880;
 
-  // Play-by-play data — prefer Supabase cache, fall back to PBPStats
   const pbpSource = hasCachedPbp ? completedGame.data!.pbp_data : pbpQuery.data;
   const pbpGameData = pbpSource?.game_data as
     | { possessions?: Possession[] }
@@ -524,7 +569,6 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
         pbpQuery.dataUpdatedAt ?? 0,
       );
 
-  // Game date: use stored game_date for completed games, today for live/upcoming
   const gameDate = isFromSupabase
     ? formatGameDate(completedGame.data!.game_date, locale)
     : gameInfo
@@ -536,177 +580,171 @@ export default function LiveGameView({ gameId }: LiveGameViewProps) {
         })
       : null;
 
-  // Team page URLs
   const homeTeamUrl = teamPageUrl(home.abbr);
   const awayTeamUrl = teamPageUrl(away.abbr);
+  const awayLogo = teamLogoUrl(away.abbr);
+  const homeLogo = teamLogoUrl(home.abbr);
+
+  const hasTeamStats = Object.keys(awayTeamStats).length > 0 || Object.keys(homeTeamStats).length > 0;
+
+  // --- Render ---
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <a href="/" className="text-sm text-gray-500 hover:text-gray-300">
-          ← {t("back")}
-        </a>
-        <div className="flex items-center gap-2">
-          {isRefetching && (
-            <div className="h-2 w-2 animate-spin rounded-full border border-orange-400 border-t-transparent" />
-          )}
-          {lastUpdated > 0 && <LastUpdated dataUpdatedAt={lastUpdated} />}
+    <div>
+      {/* ── Sticky Scoreboard Bar ── */}
+      <div className="sticky top-14 z-30 border-b border-gray-200/60 bg-white/95 backdrop-blur-sm dark:border-gray-800/60 dark:bg-gray-950/95">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
+          {/* Back link */}
+          <a href="/" className="text-sm text-gray-500 transition-colors hover:text-orange-400">
+            ← {t("back")}
+          </a>
+
+          {/* Center: Score */}
+          <div className="flex flex-col items-center gap-0.5">
+            <div className="flex items-center gap-3">
+              {/* Away team */}
+              {awayTeamUrl ? (
+                <a href={awayTeamUrl} className="flex items-center gap-1.5 transition-opacity hover:opacity-75">
+                  {awayLogo && <img src={awayLogo} alt={away.abbr} className="h-6 w-6 object-contain" />}
+                  <span className="hidden text-xs font-semibold text-gray-500 dark:text-gray-400 sm:inline">{away.abbr}</span>
+                </a>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  {awayLogo && <img src={awayLogo} alt={away.abbr} className="h-6 w-6 object-contain" />}
+                  <span className="hidden text-xs font-semibold text-gray-500 dark:text-gray-400 sm:inline">{away.abbr}</span>
+                </div>
+              )}
+
+              <span className="text-xl font-black tabular-nums text-gray-900 dark:text-white">
+                {awayScore}
+              </span>
+
+              {/* Status */}
+              <div className="mx-1">
+                {gameNotStarted ? (
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{time}</span>
+                ) : isFinal ? (
+                  <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-700/60 dark:text-gray-400">
+                    {time.split("/")[0].trim()}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold text-red-400">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
+                    {t("liveTag")}
+                  </span>
+                )}
+              </div>
+
+              <span className="text-xl font-black tabular-nums text-gray-900 dark:text-white">
+                {homeScore}
+              </span>
+
+              {/* Home team */}
+              {homeTeamUrl ? (
+                <a href={homeTeamUrl} className="flex items-center gap-1.5 transition-opacity hover:opacity-75">
+                  <span className="hidden text-xs font-semibold text-gray-500 dark:text-gray-400 sm:inline">{home.abbr}</span>
+                  {homeLogo && <img src={homeLogo} alt={home.abbr} className="h-6 w-6 object-contain" />}
+                </a>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <span className="hidden text-xs font-semibold text-gray-500 dark:text-gray-400 sm:inline">{home.abbr}</span>
+                  {homeLogo && <img src={homeLogo} alt={home.abbr} className="h-6 w-6 object-contain" />}
+                </div>
+              )}
+            </div>
+
+            {/* Game date */}
+            {gameDate && (
+              <p className="text-[10px] capitalize text-gray-400 dark:text-gray-500">{gameDate}</p>
+            )}
+          </div>
+
+          {/* Refresh status */}
+          <div className="flex items-center gap-2">
+            {isRefetching && (
+              <div className="h-2 w-2 animate-spin rounded-full border border-orange-400 border-t-transparent" />
+            )}
+            {lastUpdated > 0 && <LastUpdated dataUpdatedAt={lastUpdated} />}
+          </div>
         </div>
+
+        {/* ── Mobile Tab Bar (Box Score / PBP) ── */}
+        {!gameNotStarted && (
+          <div className="flex border-t border-gray-200/60 dark:border-gray-800/60 lg:hidden">
+            <button
+              onClick={() => setMobileTab("boxscore")}
+              className={`flex-1 py-2 text-center text-xs font-semibold uppercase tracking-wider transition-colors ${
+                mobileTab === "boxscore"
+                  ? "border-b-2 border-orange-400 text-orange-400"
+                  : "text-gray-500"
+              }`}
+            >
+              {t("boxScore")}
+            </button>
+            <button
+              onClick={() => setMobileTab("pbp")}
+              className={`flex-1 py-2 text-center text-xs font-semibold uppercase tracking-wider transition-colors ${
+                mobileTab === "pbp"
+                  ? "border-b-2 border-orange-400 text-orange-400"
+                  : "text-gray-500"
+              }`}
+            >
+              {t("pbpTab")}
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* ── Main Content ── */}
       {gameNotStarted ? (
-        <>
-          {/* Scoreboard — full width when game not started */}
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/60">
-            {gameDate && (
-              <p className="mb-2 text-center text-[10px] capitalize text-gray-400 dark:text-gray-500">
-                {gameDate}
-              </p>
-            )}
-            <div className="flex items-center justify-center gap-5">
-              <div className="flex flex-col items-center gap-1">
-                {awayTeamUrl ? (
-                  <a href={awayTeamUrl} className="flex flex-col items-center gap-1 transition-opacity hover:opacity-75">
-                    {teamLogoUrl(away.abbr) && <img src={teamLogoUrl(away.abbr)!} alt={away.abbr} className="h-8 w-8 object-contain" />}
-                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
-                  </a>
-                ) : (
-                  <>
-                    {teamLogoUrl(away.abbr) && <img src={teamLogoUrl(away.abbr)!} alt={away.abbr} className="h-8 w-8 object-contain" />}
-                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
-                  </>
-                )}
-              </div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{time}</p>
-              <div className="flex flex-col items-center gap-1">
-                {homeTeamUrl ? (
-                  <a href={homeTeamUrl} className="flex flex-col items-center gap-1 transition-opacity hover:opacity-75">
-                    {teamLogoUrl(home.abbr) && <img src={teamLogoUrl(home.abbr)!} alt={home.abbr} className="h-8 w-8 object-contain" />}
-                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
-                  </a>
-                ) : (
-                  <>
-                    {teamLogoUrl(home.abbr) && <img src={teamLogoUrl(home.abbr)!} alt={home.abbr} className="h-8 w-8 object-contain" />}
-                    <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+        <div className="mx-auto max-w-7xl px-4 py-12">
           <p className="text-center text-sm text-gray-500">{t("gameNotStarted")}</p>
-        </>
+        </div>
       ) : (
-        <>
-          {/* Two-column layout: content (left) | PBP (right) */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
-            {/* Left column */}
-            <div className="space-y-6">
-              {/* Scoreboard + Game Flow in same row */}
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
-                {/* Mini Scoreboard */}
-                <div className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-800/60 lg:w-48">
-                  {gameDate && (
-                    <p className="mb-1.5 text-center text-[9px] capitalize leading-tight text-gray-400 dark:text-gray-500">
-                      {gameDate}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="flex flex-col items-center gap-0.5">
-                      {awayTeamUrl ? (
-                        <a href={awayTeamUrl} className="flex flex-col items-center gap-0.5 transition-opacity hover:opacity-75">
-                          {teamLogoUrl(away.abbr) && <img src={teamLogoUrl(away.abbr)!} alt={away.abbr} className="h-7 w-7 object-contain" />}
-                          <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
-                        </a>
-                      ) : (
-                        <>
-                          {teamLogoUrl(away.abbr) && <img src={teamLogoUrl(away.abbr)!} alt={away.abbr} className="h-7 w-7 object-contain" />}
-                          <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{away.abbr}</span>
-                        </>
-                      )}
-                      <span className="text-2xl font-black text-gray-900 dark:text-white">{awayScore}</span>
-                    </div>
-                    <div className="text-center">
-                      {isFinal ? (
-                        <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[9px] font-medium text-gray-500 dark:bg-gray-700/60 dark:text-gray-400">
-                          {time.split("/")[0].trim()}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-1.5 py-0.5 text-[9px] font-medium text-red-400">
-                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-                          {t("liveTag")}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-center gap-0.5">
-                      {homeTeamUrl ? (
-                        <a href={homeTeamUrl} className="flex flex-col items-center gap-0.5 transition-opacity hover:opacity-75">
-                          {teamLogoUrl(home.abbr) && <img src={teamLogoUrl(home.abbr)!} alt={home.abbr} className="h-7 w-7 object-contain" />}
-                          <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
-                        </a>
-                      ) : (
-                        <>
-                          {teamLogoUrl(home.abbr) && <img src={teamLogoUrl(home.abbr)!} alt={home.abbr} className="h-7 w-7 object-contain" />}
-                          <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400">{home.abbr}</span>
-                        </>
-                      )}
-                      <span className="text-2xl font-black text-gray-900 dark:text-white">{homeScore}</span>
-                    </div>
-                  </div>
-                </div>
+        <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+          {/* Game Flow Chart — always visible */}
+          {scoreMargins.length > 0 && (
+            <GameFlowChart
+              margins={scoreMargins}
+              maxTime={maxTime}
+              homeAbbr={home.abbr}
+              awayAbbr={away.abbr}
+            />
+          )}
 
-                {/* Game flow chart — takes remaining width */}
-                {scoreMargins.length > 0 && (
-                  <div className="min-w-0 flex-1">
-                    <GameFlowChart
-                      margins={scoreMargins}
-                      maxTime={maxTime}
-                      homeAbbr={home.abbr}
-                      awayAbbr={away.abbr}
-                    />
-                  </div>
-                )}
-              </div>
+          {/* Box Score content (hidden on mobile when PBP tab active) */}
+          <div className={`space-y-6 ${mobileTab === "pbp" ? "hidden lg:block" : ""}`}>
+            {/* Team Stats Comparison */}
+            {hasTeamStats && (
+              <TeamStatsComparison
+                awayAbbr={away.abbr}
+                homeAbbr={home.abbr}
+                awayStats={awayTeamStats}
+                homeStats={homeTeamStats}
+              />
+            )}
 
-              {/* Team stats */}
-              {(Object.keys(awayTeamStats).length > 0 || Object.keys(homeTeamStats).length > 0) && (
-                <div className="flex gap-4">
-                  <TeamStatsBox
-                    label={t("away")}
-                    abbr={away.abbr}
-                    score={awayScore}
-                    stats={awayTeamStats}
-                  />
-                  <TeamStatsBox
-                    label={t("home")}
-                    abbr={home.abbr}
-                    score={homeScore}
-                    stats={homeTeamStats}
-                  />
-                </div>
-              )}
-
-              {/* Player boxscore tables */}
-              {awayPlayers.length > 0 && (
-                <PlayerTable label={away.abbr} abbr={away.abbr} players={awayPlayers} playersByNbaId={playersByNbaId} />
-              )}
-              {homePlayers.length > 0 && (
-                <PlayerTable label={home.abbr} abbr={home.abbr} players={homePlayers} playersByNbaId={playersByNbaId} />
-              )}
-            </div>
-
-            {/* Right column: Play-by-play */}
-            <div>
-              {possessions.length > 0 && (
-                <PlayByPlay
-                  possessions={possessions}
-                  homeAbbr={home.abbr}
-                  awayAbbr={away.abbr}
-                />
-              )}
-            </div>
+            {/* Player Box Score (tabbed) */}
+            <TabbedPlayerTable
+              awayAbbr={away.abbr}
+              homeAbbr={home.abbr}
+              awayPlayers={awayPlayers}
+              homePlayers={homePlayers}
+              playersByNbaId={playersByNbaId}
+            />
           </div>
-        </>
+
+          {/* Play-by-Play (hidden on mobile when box score tab active) */}
+          <div className={mobileTab === "boxscore" ? "hidden lg:block" : ""}>
+            {possessions.length > 0 && (
+              <PlayByPlay
+                possessions={possessions}
+                homeAbbr={home.abbr}
+                awayAbbr={away.abbr}
+              />
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

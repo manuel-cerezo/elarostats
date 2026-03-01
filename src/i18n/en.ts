@@ -133,6 +133,10 @@ export const en = {
   pbpExpandAll: "Expand all",
   pbpCollapseAll: "Collapse all",
 
+  // Live game detail
+  boxScore: "Box Score",
+  pbpTab: "Play-by-Play",
+
   // Live game
   updatedSecondsAgo: "Updated {seconds}s ago",
   updatedJustNow: "Updated just now",
