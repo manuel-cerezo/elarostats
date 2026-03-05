@@ -370,6 +370,73 @@ async function processGame(
 }
 
 // ---------------------------------------------------------------------------
+// Process entities with concurrency control
+// ---------------------------------------------------------------------------
+
+async function processEntities(
+  entityType: "Player" | "Team",
+  entityIds: number[],
+  table: string,
+  mapFn: (
+    row: Record<string, unknown>,
+    entityId: number,
+    season: string,
+    seasonType: string,
+  ) => Record<string, unknown>,
+  season: string,
+  seasonType: string,
+): Promise<number> {
+  let totalRows = 0;
+  let failed = 0;
+
+  // Process in concurrent batches
+  for (let i = 0; i < entityIds.length; i += CONCURRENCY) {
+    const batch = entityIds.slice(i, i + CONCURRENCY);
+
+    const results = await Promise.allSettled(
+      batch.map(async (entityId) => {
+        const logs = await fetchGameLogs(entityType, entityId, season, seasonType);
+        return { entityId, logs };
+      }),
+    );
+
+    const allRows: Record<string, unknown>[] = [];
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        const { entityId, logs } = result.value;
+        const mapped = logs.map((row) => mapFn(row, entityId, season, seasonType));
+        allRows.push(...mapped);
+      } else {
+        failed++;
+        console.warn(`  ⚠ ${entityType} fetch failed: ${result.reason}`);
+      }
+    }
+
+    if (allRows.length > 0) {
+      await upsertBatch(table, allRows, "entity_id,game_id");
+      totalRows += allRows.length;
+    }
+
+    const processed = Math.min(i + CONCURRENCY, entityIds.length);
+    console.log(
+      `  Progress: ${processed}/${entityIds.length} ${entityType.toLowerCase()}s processed (${totalRows} rows so far)`,
+    );
+
+    // Be kind to PBPStats — pause between batches
+    if (i + CONCURRENCY < entityIds.length) {
+      await sleep(DELAY_BETWEEN_BATCHES_MS);
+    }
+  }
+
+  if (failed > 0) {
+    console.warn(`  ⚠ ${failed} ${entityType.toLowerCase()}(s) failed to fetch`);
+  }
+
+  return totalRows;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
