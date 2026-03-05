@@ -29,9 +29,14 @@ function getTodayET(): string {
 /**
  * Supabase-first hook for the games page.
  *
- * 1. Fetches the latest completed games from Supabase (fast, our own DB).
- * 2. If Supabase has games **for today**, uses them and skips PBPStats.
- * 3. Otherwise (games are from a previous day, or no games), falls back to PBPStats.
+ * Strategy:
+ * 1. Always check PBPStats for live/upcoming games.
+ * 2. Fetch the latest completed games from Supabase (our own DB).
+ * 3. If PBPStats has live or upcoming games for today, prefer those.
+ * 4. If PBPStats returns nothing (no games today / API rolled over),
+ *    show the latest completed games from Supabase regardless of date.
+ * 5. If Supabase games match today AND PBPStats has games, merge them
+ *    (PBPStats for live/upcoming, Supabase for already-final).
  *
  * Also pre-seeds the TanStack Query cache for each completed game so that
  * individual GameCard `useCompletedGame` calls get instant cache hits.
@@ -59,29 +64,51 @@ export function useTodayGames() {
     gcTime: Infinity,
   });
 
-  // Only use Supabase games if they match today's date (ET)
-  const todayET = getTodayET();
-  const hasSupabaseGamesForToday =
-    supabaseFetched &&
-    !supabaseError &&
-    completedGames != null &&
-    completedGames.length > 0 &&
-    completedGames[0]?.game_date === todayET;
-
-  // Fall back to PBPStats if Supabase has no games for today
+  // Check PBPStats for live/upcoming games
   const {
     data: pbpGames,
     isLoading: pbpLoading,
     isError: pbpError,
-  } = useLiveGamesData(supabaseFetched && !hasSupabaseGamesForToday);
+  } = useLiveGamesData(true);
+
+  const todayET = getTodayET();
+  const hasSupabaseGames =
+    supabaseFetched && !supabaseError && completedGames != null && completedGames.length > 0;
+  const supabaseGamesAreToday = hasSupabaseGames && completedGames[0]?.game_date === todayET;
+
+  // PBPStats has meaningful data when it returns games (live, upcoming, or final)
+  const pbpHasGames = pbpGames != null && pbpGames.length > 0;
+  const pbpHasLiveOrUpcoming = pbpHasGames && pbpGames.some((g) => !g.isFinal);
 
   // Derive final game list
-  const games: ParsedLiveGame[] | undefined = hasSupabaseGamesForToday
-    ? completedGames.map(completedToParsed)
-    : pbpGames;
+  let games: ParsedLiveGame[] | undefined;
 
-  const isLoading = !supabaseFetched || (!hasSupabaseGamesForToday && pbpLoading);
+  if (pbpHasLiveOrUpcoming) {
+    // PBPStats has active/upcoming games today — use PBPStats as primary
+    // Merge with Supabase completed games if they're from today
+    // (handles mid-day: some games final in Supabase, others still live in PBPStats)
+    if (supabaseGamesAreToday) {
+      const pbpIds = new Set(pbpGames.map((g) => g.gameId));
+      const supabaseOnly = completedGames
+        .filter((g) => !pbpIds.has(g.game_id))
+        .map(completedToParsed);
+      games = [...pbpGames, ...supabaseOnly];
+    } else {
+      games = pbpGames;
+    }
+  } else if (pbpHasGames && pbpGames.every((g) => g.isFinal)) {
+    // PBPStats has all games as final — use PBPStats (still today's games)
+    games = pbpGames;
+  } else if (hasSupabaseGames) {
+    // PBPStats returned empty or errored — show latest Supabase games
+    // regardless of date (yesterday's completed games are better than nothing)
+    games = completedGames.map(completedToParsed);
+  } else {
+    games = pbpGames; // will be undefined or empty
+  }
+
+  const isLoading = !supabaseFetched || pbpLoading;
   const isError = supabaseError && pbpError;
 
-  return { data: games, isLoading, isError };
+  return { data: games, isLoading, isError, gameDate: hasSupabaseGames ? completedGames[0]?.game_date : undefined };
 }
