@@ -1,16 +1,20 @@
 /**
  * sync-gamelogs.ts
  *
- * Fetches per-game logs for every NBA player and team from the NBA Stats API
- * and caches them in Supabase (player_game_logs, team_game_logs).
+ * Incrementally syncs NBA box-score data into Supabase
+ * (player_game_logs, team_game_logs).
  *
- * This avoids redundant API calls from the browser — the frontend reads
- * from Supabase first and only falls back when no cached data exists.
+ * Strategy:
+ *   1. Get completed game IDs from the NBA CDN scoreboard
+ *   2. Skip games already in Supabase
+ *   3. Fetch the full box score for each new game from NBA CDN
+ *   4. Extract player + team rows from one response per game
+ *
+ * This replaces the old per-entity PBPStats approach (~500+ API calls)
+ * with ~10-15 calls per day (one per new game).
  *
  *   npm run sync:gamelogs
- *
- * Volume: 2 API calls total (one bulk endpoint per entity type).
- * Each returns all game logs for all players/teams in the season.
+ *   npm run sync:gamelogs -- --backfill   # re-sync all games in game_stats
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -29,32 +33,79 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const NBA_STATS_BASE = "https://stats.nba.com/stats";
+const NBA_CDN_BASE = "https://cdn.nba.com/static/json/liveData";
+const BATCH_SIZE = 100;
 const DEFAULT_SEASON = "2025-26";
 const DEFAULT_SEASON_TYPE = "Regular Season";
-const BATCH_SIZE = 100;
-
-// Headers required by stats.nba.com (returns 403 without them)
-const NBA_STATS_HEADERS: Record<string, string> = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Referer: "https://www.nba.com/",
-  Accept: "application/json, text/plain, */*",
-  "Accept-Language": "en-US,en;q=0.9",
-  Origin: "https://www.nba.com",
-  Connection: "keep-alive",
-};
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface NbaStatsResponse {
-  resultSets: Array<{
-    name: string;
-    headers: string[];
-    rowSet: Array<Array<unknown>>;
-  }>;
+interface ScoreboardGame {
+  gameId: string;
+  gameStatus: number; // 3 = Final
+  gameStatusText: string;
+  gameCode: string; // e.g. "20260227/CLEDET"
+  homeTeam: { teamId: number; teamTricode: string; score: number };
+  awayTeam: { teamId: number; teamTricode: string; score: number };
+}
+
+interface BoxscorePlayer {
+  personId: number;
+  name: string;
+  status: string;
+  played: string;
+  statistics: {
+    points: number;
+    reboundsTotal: number;
+    assists: number;
+    steals: number;
+    blocks: number;
+    turnovers: number;
+    minutes: string; // "PT35M33.00S"
+    twoPointersMade: number;
+    twoPointersAttempted: number;
+    threePointersMade: number;
+    threePointersAttempted: number;
+    freeThrowsMade: number;
+    freeThrowsAttempted: number;
+    fieldGoalsMade: number;
+    fieldGoalsAttempted: number;
+    plusMinusPoints: number;
+  };
+}
+
+interface BoxscoreTeam {
+  teamId: number;
+  teamTricode: string;
+  score: number;
+  players: BoxscorePlayer[];
+  statistics: {
+    points: number;
+    reboundsTotal: number;
+    assists: number;
+    steals: number;
+    turnovers: number;
+    twoPointersMade: number;
+    twoPointersAttempted: number;
+    threePointersMade: number;
+    threePointersAttempted: number;
+    freeThrowsMade: number;
+    freeThrowsAttempted: number;
+    fieldGoalsMade: number;
+    fieldGoalsAttempted: number;
+  };
+}
+
+interface BoxscoreResponse {
+  game: {
+    gameId: string;
+    gameCode: string;
+    gameStatus: number;
+    homeTeam: BoxscoreTeam;
+    awayTeam: BoxscoreTeam;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -65,167 +116,188 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Retry a fetch up to maxRetries times on transient server errors (5xx / network). */
-async function fetchWithRetry(
-  url: string,
-  label: string,
-  maxRetries = 3,
-  delaysMs = [10_000, 30_000, 60_000],
-): Promise<Response> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const res = await fetch(url, { headers: NBA_STATS_HEADERS });
-    if (res.ok) return res;
+/** Parse ISO 8601 duration "PT35M33.00S" → decimal minutes as string. */
+function parseMinutes(iso: string): string {
+  const match = iso.match(/PT(\d+)M([\d.]+)S/);
+  if (!match) return "0";
+  const mins = parseInt(match[1], 10);
+  const secs = parseFloat(match[2]);
+  return (mins + secs / 60).toFixed(1);
+}
 
-    const isTransient = res.status >= 500 || res.status === 429;
-    const isLastAttempt = attempt === maxRetries;
+/** Compute eFG% = (FGM + 0.5 * 3PM) / FGA */
+function computeEfgPct(fgm: number, fg3m: number, fga: number): number | null {
+  if (fga === 0) return null;
+  return (fgm + 0.5 * fg3m) / fga;
+}
 
-    if (isTransient && !isLastAttempt) {
-      const delay = delaysMs[attempt] ?? 60_000;
-      console.warn(
-        `  ⚠ ${label}: ${res.status} ${res.statusText} — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${maxRetries})…`,
-      );
-      await sleep(delay);
-      continue;
-    }
+/** Compute TS% = PTS / (2 * TSA), where TSA = FGA + 0.44 * FTA */
+function computeTsPct(pts: number, fga: number, fta: number): number | null {
+  const tsa = fga + 0.44 * fta;
+  if (tsa === 0) return null;
+  return pts / (2 * tsa);
+}
 
-    throw new Error(`Failed to fetch ${label}: ${res.status} ${res.statusText}`);
+/** Determine W/L for a team given scores. */
+function winLoss(teamScore: number, opponentScore: number): string {
+  return teamScore > opponentScore ? "W" : "L";
+}
+
+/** Extract date from gameCode "20260227/CLEDET" → "2026-02-27" */
+function parseDateFromGameCode(gameCode: string): string {
+  const dateStr = gameCode.split("/")[0];
+  return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
+}
+
+// ---------------------------------------------------------------------------
+// NBA CDN fetchers
+// ---------------------------------------------------------------------------
+
+async function fetchScoreboard(): Promise<ScoreboardGame[]> {
+  const url = `${NBA_CDN_BASE}/scoreboard/todaysScoreboard_00.json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Scoreboard fetch failed: ${res.status}`);
+  const data = await res.json();
+  return data.scoreboard?.games ?? [];
+}
+
+async function fetchBoxscore(gameId: string): Promise<BoxscoreResponse> {
+  const url = `${NBA_CDN_BASE}/boxscore/boxscore_${gameId}.json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Boxscore ${gameId} fetch failed: ${res.status}`);
+  return res.json() as Promise<BoxscoreResponse>;
+}
+
+// ---------------------------------------------------------------------------
+// Get game IDs already synced in player_game_logs
+// ---------------------------------------------------------------------------
+
+async function getAlreadySyncedGameIds(gameIds: string[]): Promise<Set<string>> {
+  // Query distinct game_ids from player_game_logs that match input
+  const { data, error } = await supabase
+    .from("player_game_logs")
+    .select("game_id")
+    .in("game_id", gameIds);
+
+  if (error) {
+    console.warn("  Warning: could not check existing game logs:", error.message);
+    return new Set();
   }
-  throw new Error(`Exhausted retries for ${label}`);
-}
 
-/** Convert a rowSet row to a keyed object using the headers array. */
-function rowToObject(headers: string[], row: unknown[]): Record<string, unknown> {
-  return Object.fromEntries(headers.map((h, i) => [h, row[i]]));
-}
-
-/** Extract opponent abbreviation from MATCHUP like "LAL vs. GSW" or "LAL @ DEN" */
-function parseOpponent(matchup: unknown): string | null {
-  if (typeof matchup !== "string") return null;
-  const parts = matchup.split(/\s+(?:vs\.|@)\s+/);
-  return parts.length === 2 ? parts[1].trim() : matchup;
+  return new Set((data ?? []).map((r: { game_id: string }) => r.game_id));
 }
 
 // ---------------------------------------------------------------------------
-// Fetch game logs from NBA Stats API (bulk — all entities in one call)
+// Get all game IDs from game_stats for backfill mode
 // ---------------------------------------------------------------------------
 
-async function fetchNbaGameLogs(
-  endpoint: "playergamelogs" | "teamgamelogs",
-  season: string,
-  seasonType: string,
-): Promise<Array<Record<string, unknown>>> {
-  const url = new URL(`${NBA_STATS_BASE}/${endpoint}`);
-  url.searchParams.set("Season", season);
-  url.searchParams.set("SeasonType", seasonType);
-  url.searchParams.set("LeagueID", "00");
+async function getAllGameStatsIds(): Promise<{ gameId: string; gameDate: string }[]> {
+  const { data, error } = await supabase
+    .from("game_stats")
+    .select("game_id, game_date")
+    .order("game_id", { ascending: true });
 
-  console.log(`  GET ${url.toString()}`);
-  const res = await fetchWithRetry(url.toString(), endpoint);
-  const data: NbaStatsResponse = await res.json();
-
-  const resultSet = data.resultSets?.[0];
-  if (!resultSet?.rowSet?.length) {
-    return [];
-  }
-
-  return resultSet.rowSet.map((row) => rowToObject(resultSet.headers, row));
+  if (error) throw new Error(`Failed to fetch game_stats: ${error.message}`);
+  return (data ?? []).map((r: { game_id: string; game_date: string }) => ({
+    gameId: r.game_id,
+    gameDate: r.game_date,
+  }));
 }
 
 // ---------------------------------------------------------------------------
-// Mapping functions
+// Map boxscore data → Supabase rows
 // ---------------------------------------------------------------------------
 
-function mapPlayerLogRow(
-  row: Record<string, unknown>,
+function mapPlayerRow(
+  player: BoxscorePlayer,
+  gameId: string,
+  gameDate: string,
+  opponentAbbr: string,
+  teamScore: number,
+  opponentScore: number,
   season: string,
   seasonType: string,
 ): Record<string, unknown> {
-  const fgm = (row.FGM as number) ?? 0;
-  const fga = (row.FGA as number) ?? 0;
-  const fg3m = (row.FG3M as number) ?? 0;
-  const fg3a = (row.FG3A as number) ?? 0;
-  const ftm = (row.FTM as number) ?? 0;
-  const fta = (row.FTA as number) ?? 0;
-  const pts = (row.PTS as number) ?? 0;
-
-  const efgPct = fga > 0 ? Math.round(((fgm + 0.5 * fg3m) / fga) * 1000) / 1000 : null;
-  const tsDenom = 2 * (fga + 0.44 * fta);
-  const tsPct = tsDenom > 0 ? Math.round((pts / tsDenom) * 1000) / 1000 : null;
+  const s = player.statistics;
+  const fgm = s.fieldGoalsMade;
+  const fga = s.fieldGoalsAttempted;
+  const fg3m = s.threePointersMade;
+  const fta = s.freeThrowsAttempted;
+  const ftm = s.freeThrowsMade;
 
   return {
-    entity_id: row.PLAYER_ID,
-    game_id: row.GAME_ID,
+    entity_id: player.personId,
+    game_id: gameId,
     season,
     season_type: seasonType,
-    date: row.GAME_DATE ?? null,
-    opponent: parseOpponent(row.MATCHUP),
-    points: pts,
-    rebounds: row.REB ?? null,
-    assists: row.AST ?? null,
-    steals: row.STL ?? null,
-    blocks: row.BLK ?? null,
-    turnovers: row.TOV ?? null,
-    minutes: row.MIN ?? null,
-    fg2m: fgm - fg3m,
-    fg2a: fga - fg3a,
-    fg3m,
-    fg3a,
+    date: gameDate,
+    opponent: opponentAbbr,
+    points: s.points,
+    rebounds: s.reboundsTotal,
+    assists: s.assists,
+    steals: s.steals,
+    blocks: s.blocks,
+    turnovers: s.turnovers,
+    minutes: parseMinutes(s.minutes),
+    fg2m: s.twoPointersMade,
+    fg2a: s.twoPointersAttempted,
+    fg3m: s.threePointersMade,
+    fg3a: s.threePointersAttempted,
     ft_points: ftm,
     fta,
-    efg_pct: efgPct,
-    ts_pct: tsPct,
-    plus_minus: row.PLUS_MINUS ?? null,
-    wl: row.WL ?? null,
-    raw_data: row,
+    efg_pct: computeEfgPct(fgm, fg3m, fga),
+    ts_pct: computeTsPct(s.points, fga, fta),
+    plus_minus: s.plusMinusPoints,
+    wl: winLoss(teamScore, opponentScore),
+    raw_data: s,
     synced_at: new Date().toISOString(),
   };
 }
 
-function mapTeamLogRow(
-  row: Record<string, unknown>,
+function mapTeamRow(
+  team: BoxscoreTeam,
+  gameId: string,
+  gameDate: string,
+  opponentAbbr: string,
+  opponentScore: number,
   season: string,
   seasonType: string,
 ): Record<string, unknown> {
-  const fgm = (row.FGM as number) ?? 0;
-  const fga = (row.FGA as number) ?? 0;
-  const fg3m = (row.FG3M as number) ?? 0;
-  const fg3a = (row.FG3A as number) ?? 0;
-  const ftm = (row.FTM as number) ?? 0;
-  const fta = (row.FTA as number) ?? 0;
-  const pts = (row.PTS as number) ?? 0;
-
-  const efgPct = fga > 0 ? Math.round(((fgm + 0.5 * fg3m) / fga) * 1000) / 1000 : null;
-  const tsDenom = 2 * (fga + 0.44 * fta);
-  const tsPct = tsDenom > 0 ? Math.round((pts / tsDenom) * 1000) / 1000 : null;
+  const s = team.statistics;
+  const fgm = s.fieldGoalsMade;
+  const fga = s.fieldGoalsAttempted;
+  const fg3m = s.threePointersMade;
+  const fta = s.freeThrowsAttempted;
+  const ftm = s.freeThrowsMade;
 
   return {
-    entity_id: row.TEAM_ID,
-    game_id: row.GAME_ID,
+    entity_id: team.teamId,
+    game_id: gameId,
     season,
     season_type: seasonType,
-    date: row.GAME_DATE ?? null,
-    opponent: parseOpponent(row.MATCHUP),
-    points: pts,
-    rebounds: row.REB ?? null,
-    assists: row.AST ?? null,
-    steals: row.STL ?? null,
-    turnovers: row.TOV ?? null,
-    fg2m: fgm - fg3m,
-    fg2a: fga - fg3a,
-    fg3m,
-    fg3a,
+    date: gameDate,
+    opponent: opponentAbbr,
+    points: s.points,
+    rebounds: s.reboundsTotal,
+    assists: s.assists,
+    steals: s.steals,
+    turnovers: s.turnovers,
+    fg2m: s.twoPointersMade,
+    fg2a: s.twoPointersAttempted,
+    fg3m: s.threePointersMade,
+    fg3a: s.threePointersAttempted,
     ft_points: ftm,
     fta,
-    efg_pct: efgPct,
-    ts_pct: tsPct,
-    wl: row.WL ?? null,
-    raw_data: row,
+    efg_pct: computeEfgPct(fgm, fg3m, fga),
+    ts_pct: computeTsPct(s.points, fga, fta),
+    wl: winLoss(team.score, opponentScore),
+    raw_data: s,
     synced_at: new Date().toISOString(),
   };
 }
 
 // ---------------------------------------------------------------------------
-// Batch upsert
+// Batch upsert to Supabase
 // ---------------------------------------------------------------------------
 
 async function upsertBatch(
@@ -241,11 +313,60 @@ async function upsertBatch(
     if (error) {
       throw new Error(`Supabase upsert to ${table} failed: ${error.message}`);
     }
+  }
+}
 
-    console.log(
-      `  [${table}] Upserted rows ${i + 1}–${Math.min(i + BATCH_SIZE, rows.length)} of ${rows.length}`,
+// ---------------------------------------------------------------------------
+// Process a single game boxscore
+// ---------------------------------------------------------------------------
+
+async function processGame(
+  gameId: string,
+  gameDate: string,
+  season: string,
+  seasonType: string,
+): Promise<{ playerRows: number; teamRows: number }> {
+  const boxscore = await fetchBoxscore(gameId);
+  const game = boxscore.game;
+
+  const home = game.homeTeam;
+  const away = game.awayTeam;
+
+  // Derive date from gameCode if not provided
+  const date = gameDate || parseDateFromGameCode(game.gameCode);
+
+  // --- Player rows ---
+  const playerRows: Record<string, unknown>[] = [];
+
+  for (const player of home.players) {
+    if (player.status !== "ACTIVE" || player.played !== "1") continue;
+    playerRows.push(
+      mapPlayerRow(player, gameId, date, away.teamTricode, home.score, away.score, season, seasonType),
     );
   }
+
+  for (const player of away.players) {
+    if (player.status !== "ACTIVE" || player.played !== "1") continue;
+    playerRows.push(
+      mapPlayerRow(player, gameId, date, home.teamTricode, away.score, home.score, season, seasonType),
+    );
+  }
+
+  // --- Team rows ---
+  const teamRows: Record<string, unknown>[] = [
+    mapTeamRow(home, gameId, date, away.teamTricode, away.score, season, seasonType),
+    mapTeamRow(away, gameId, date, home.teamTricode, home.score, season, seasonType),
+  ];
+
+  // --- Upsert ---
+  if (playerRows.length > 0) {
+    await upsertBatch("player_game_logs", playerRows, "entity_id,game_id");
+  }
+  if (teamRows.length > 0) {
+    await upsertBatch("team_game_logs", teamRows, "entity_id,game_id");
+  }
+
+  return { playerRows: playerRows.length, teamRows: teamRows.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -253,45 +374,88 @@ async function upsertBatch(
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const season = process.argv[2] || DEFAULT_SEASON;
-  const seasonType = process.argv[3] || DEFAULT_SEASON_TYPE;
+  const isBackfill = process.argv.includes("--backfill");
+  const season = DEFAULT_SEASON;
+  const seasonType = DEFAULT_SEASON_TYPE;
 
-  console.log(`=== elarostats game logs sync (${season}, ${seasonType}) ===\n`);
+  console.log(`=== elarostats game logs sync (${season}, ${seasonType}) ===`);
+  console.log(`Mode: ${isBackfill ? "backfill (all games in game_stats)" : "incremental (today's scoreboard)"}\n`);
 
   try {
-    // ── Player game logs ──────────────────────────────────────────────────
+    let gamesToProcess: { gameId: string; gameDate: string }[] = [];
 
-    console.log("Fetching all player game logs from NBA Stats API…");
-    const playerRows = await fetchNbaGameLogs("playergamelogs", season, seasonType);
-    console.log(`  Received ${playerRows.length} player game log rows.\n`);
+    if (isBackfill) {
+      // Backfill: re-sync all games from game_stats
+      const allGames = await getAllGameStatsIds();
+      console.log(`Found ${allGames.length} games in game_stats.`);
+      gamesToProcess = allGames;
+    } else {
+      // Incremental: only today's completed games from NBA CDN scoreboard
+      console.log("Fetching today's scoreboard from NBA CDN…");
+      const games = await fetchScoreboard();
+      const finalGames = games.filter((g) => g.gameStatus === 3);
 
-    const allPlayerRows = playerRows.map((row) => mapPlayerLogRow(row, season, seasonType));
+      if (finalGames.length === 0) {
+        console.log("No completed games found on today's scoreboard. Nothing to sync.");
+        return;
+      }
 
-    if (allPlayerRows.length > 0) {
-      console.log("Upserting player game logs…");
-      await upsertBatch("player_game_logs", allPlayerRows, "entity_id,game_id");
-      console.log(`Player game logs sync complete — ${allPlayerRows.length} rows.\n`);
+      console.log(`Found ${finalGames.length} completed game(s) on scoreboard.`);
+
+      gamesToProcess = finalGames.map((g) => ({
+        gameId: g.gameId,
+        gameDate: parseDateFromGameCode(g.gameCode),
+      }));
     }
 
-    // ── Team game logs ────────────────────────────────────────────────────
+    // Skip games already in player_game_logs
+    const gameIds = gamesToProcess.map((g) => g.gameId);
+    const alreadySynced = await getAlreadySyncedGameIds(gameIds);
+    const newGames = gamesToProcess.filter((g) => !alreadySynced.has(g.gameId));
 
-    console.log("Fetching all team game logs from NBA Stats API…");
-    const teamRows = await fetchNbaGameLogs("teamgamelogs", season, seasonType);
-    console.log(`  Received ${teamRows.length} team game log rows.\n`);
-
-    const allTeamRows = teamRows.map((row) => mapTeamLogRow(row, season, seasonType));
-
-    if (allTeamRows.length > 0) {
-      console.log("Upserting team game logs…");
-      await upsertBatch("team_game_logs", allTeamRows, "entity_id,game_id");
-      console.log(`Team game logs sync complete — ${allTeamRows.length} rows.\n`);
+    if (newGames.length === 0) {
+      console.log("All games are already synced. Nothing to do.");
+      return;
     }
 
-    // ── Summary ───────────────────────────────────────────────────────────
+    console.log(
+      `Syncing ${newGames.length} new game(s) (${alreadySynced.size} already cached).\n`,
+    );
 
-    console.log("All done!");
-    console.log(`  Players: ${allPlayerRows.length} game log rows`);
-    console.log(`  Teams: ${allTeamRows.length} game log rows`);
+    let totalPlayerRows = 0;
+    let totalTeamRows = 0;
+    let synced = 0;
+    let failed = 0;
+
+    for (const game of newGames) {
+      try {
+        console.log(`  [${synced + failed + 1}/${newGames.length}] Fetching boxscore ${game.gameId} (${game.gameDate})…`);
+        const result = await processGame(game.gameId, game.gameDate, season, seasonType);
+        totalPlayerRows += result.playerRows;
+        totalTeamRows += result.teamRows;
+        synced++;
+        console.log(`    ✓ ${result.playerRows} player rows, ${result.teamRows} team rows`);
+      } catch (err) {
+        failed++;
+        console.error(
+          `    ✗ Failed: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+
+      // Small delay between games to be respectful to the CDN
+      if (synced + failed < newGames.length) {
+        await sleep(500);
+      }
+    }
+
+    console.log(`\nAll done!`);
+    console.log(`  Games: ${synced} synced, ${failed} failed`);
+    console.log(`  Player rows: ${totalPlayerRows}`);
+    console.log(`  Team rows: ${totalTeamRows}`);
+
+    if (failed > 0 && synced === 0) {
+      process.exit(1);
+    }
   } catch (err) {
     console.error("\nSync failed:", err);
     process.exit(1);

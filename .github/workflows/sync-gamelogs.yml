@@ -3,13 +3,13 @@ name: Sync Game Logs
 on:
   schedule:
     # 06:30 UTC = 07:30 CET (winter) / 08:30 CEST (summer).
-    # Runs after sync-pbpstats (06:00) to ensure player/team IDs are fresh.
+    # Runs after sync-games to pick up any newly completed games.
     - cron: "30 6 * * *"
   workflow_dispatch: # permite lanzarlo manualmente desde GitHub
 
 jobs:
   sync:
-    name: Sync player & team game logs from pbpstats → Supabase
+    name: Sync player & team game logs from NBA CDN → Supabase
     runs-on: ubuntu-latest
 
     steps:
