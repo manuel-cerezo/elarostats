@@ -5,16 +5,16 @@
  * (player_game_logs, team_game_logs).
  *
  * Strategy:
- *   1. Get completed game IDs from the NBA CDN scoreboard
- *   2. Skip games already in Supabase
- *   3. Fetch the full box score for each new game from NBA CDN
+ *   1. Fetch the full NBA season schedule to discover ALL completed games
+ *   2. Skip games already in Supabase (player_game_logs)
+ *   3. Fetch the box score for each missing game from NBA CDN
  *   4. Extract player + team rows from one response per game
  *
- * This replaces the old per-entity PBPStats approach (~500+ API calls)
- * with ~10-15 calls per day (one per new game).
+ * Uses the schedule (not just today's scoreboard) so missed days are
+ * automatically caught up — no gaps if the cron job skips a day.
  *
  *   npm run sync:gamelogs
- *   npm run sync:gamelogs -- --backfill   # re-sync all games in game_stats
+ *   npm run sync:gamelogs -- --backfill   # re-sync all games (ignore cache)
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -34,6 +34,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const NBA_CDN_BASE = "https://cdn.nba.com/static/json/liveData";
+const NBA_SCHEDULE_URL =
+  "https://cdn.nba.com/static/json/staticData/scheduleLeagueV2.json";
 const BATCH_SIZE = 100;
 const DEFAULT_SEASON = "2025-26";
 const DEFAULT_SEASON_TYPE = "Regular Season";
@@ -42,13 +44,17 @@ const DEFAULT_SEASON_TYPE = "Regular Season";
 // Types
 // ---------------------------------------------------------------------------
 
-interface ScoreboardGame {
+interface ScheduleGame {
   gameId: string;
-  gameStatus: number; // 3 = Final
-  gameStatusText: string;
+  gameStatus: number; // 1=scheduled, 2=in-progress, 3=final
   gameCode: string; // e.g. "20260227/CLEDET"
-  homeTeam: { teamId: number; teamTricode: string; score: number };
-  awayTeam: { teamId: number; teamTricode: string; score: number };
+  homeTeam: { teamTricode: string };
+  awayTeam: { teamTricode: string };
+}
+
+interface ScheduleDate {
+  gameDate: string; // "03/04/2026 00:00:00"
+  games: ScheduleGame[];
 }
 
 interface BoxscorePlayer {
@@ -153,12 +159,31 @@ function parseDateFromGameCode(gameCode: string): string {
 // NBA CDN fetchers
 // ---------------------------------------------------------------------------
 
-async function fetchScoreboard(): Promise<ScoreboardGame[]> {
-  const url = `${NBA_CDN_BASE}/scoreboard/todaysScoreboard_00.json`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Scoreboard fetch failed: ${res.status}`);
+/** Fetch the full season schedule and return all completed (final) regular-season games. */
+async function fetchCompletedGamesFromSchedule(): Promise<
+  { gameId: string; gameDate: string }[]
+> {
+  const res = await fetch(NBA_SCHEDULE_URL);
+  if (!res.ok) throw new Error(`Schedule fetch failed: ${res.status}`);
+
   const data = await res.json();
-  return data.scoreboard?.games ?? [];
+  const gameDates: ScheduleDate[] = data.leagueSchedule?.gameDates ?? [];
+
+  const result: { gameId: string; gameDate: string }[] = [];
+
+  for (const gd of gameDates) {
+    for (const game of gd.games) {
+      // Only completed regular-season games (gameId starts with "002")
+      if (game.gameStatus === 3 && game.gameId.startsWith("002")) {
+        result.push({
+          gameId: game.gameId,
+          gameDate: parseDateFromGameCode(game.gameCode),
+        });
+      }
+    }
+  }
+
+  return result;
 }
 
 async function fetchBoxscore(gameId: string): Promise<BoxscoreResponse> {
@@ -172,12 +197,11 @@ async function fetchBoxscore(gameId: string): Promise<BoxscoreResponse> {
 // Get game IDs already synced in player_game_logs
 // ---------------------------------------------------------------------------
 
-async function getAlreadySyncedGameIds(gameIds: string[]): Promise<Set<string>> {
-  // Query distinct game_ids from player_game_logs that match input
+async function getAlreadySyncedGameIds(): Promise<Set<string>> {
+  // Fetch ALL distinct game_ids from player_game_logs
   const { data, error } = await supabase
     .from("player_game_logs")
-    .select("game_id")
-    .in("game_id", gameIds);
+    .select("game_id");
 
   if (error) {
     console.warn("  Warning: could not check existing game logs:", error.message);
@@ -185,23 +209,6 @@ async function getAlreadySyncedGameIds(gameIds: string[]): Promise<Set<string>> 
   }
 
   return new Set((data ?? []).map((r: { game_id: string }) => r.game_id));
-}
-
-// ---------------------------------------------------------------------------
-// Get all game IDs from game_stats for backfill mode
-// ---------------------------------------------------------------------------
-
-async function getAllGameStatsIds(): Promise<{ gameId: string; gameDate: string }[]> {
-  const { data, error } = await supabase
-    .from("game_stats")
-    .select("game_id, game_date")
-    .order("game_id", { ascending: true });
-
-  if (error) throw new Error(`Failed to fetch game_stats: ${error.message}`);
-  return (data ?? []).map((r: { game_id: string; game_date: string }) => ({
-    gameId: r.game_id,
-    gameDate: r.game_date,
-  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +350,11 @@ async function processGame(
     playerRows.push(
       mapPlayerRow(player, gameId, date, away.teamTricode, home.score, away.score, season, seasonType),
     );
+
+    // Be kind to PBPStats — pause between batches
+    if (i + CONCURRENCY < entityIds.length) {
+      await sleep(DELAY_BETWEEN_BATCHES_MS);
+    }
   }
 
   for (const player of away.players) {
@@ -370,73 +382,6 @@ async function processGame(
 }
 
 // ---------------------------------------------------------------------------
-// Process entities with concurrency control
-// ---------------------------------------------------------------------------
-
-async function processEntities(
-  entityType: "Player" | "Team",
-  entityIds: number[],
-  table: string,
-  mapFn: (
-    row: Record<string, unknown>,
-    entityId: number,
-    season: string,
-    seasonType: string,
-  ) => Record<string, unknown>,
-  season: string,
-  seasonType: string,
-): Promise<number> {
-  let totalRows = 0;
-  let failed = 0;
-
-  // Process in concurrent batches
-  for (let i = 0; i < entityIds.length; i += CONCURRENCY) {
-    const batch = entityIds.slice(i, i + CONCURRENCY);
-
-    const results = await Promise.allSettled(
-      batch.map(async (entityId) => {
-        const logs = await fetchGameLogs(entityType, entityId, season, seasonType);
-        return { entityId, logs };
-      }),
-    );
-
-    const allRows: Record<string, unknown>[] = [];
-
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        const { entityId, logs } = result.value;
-        const mapped = logs.map((row) => mapFn(row, entityId, season, seasonType));
-        allRows.push(...mapped);
-      } else {
-        failed++;
-        console.warn(`  ⚠ ${entityType} fetch failed: ${result.reason}`);
-      }
-    }
-
-    if (allRows.length > 0) {
-      await upsertBatch(table, allRows, "entity_id,game_id");
-      totalRows += allRows.length;
-    }
-
-    const processed = Math.min(i + CONCURRENCY, entityIds.length);
-    console.log(
-      `  Progress: ${processed}/${entityIds.length} ${entityType.toLowerCase()}s processed (${totalRows} rows so far)`,
-    );
-
-    // Be kind to PBPStats — pause between batches
-    if (i + CONCURRENCY < entityIds.length) {
-      await sleep(DELAY_BETWEEN_BATCHES_MS);
-    }
-  }
-
-  if (failed > 0) {
-    console.warn(`  ⚠ ${failed} ${entityType.toLowerCase()}(s) failed to fetch`);
-  }
-
-  return totalRows;
-}
-
-// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -446,57 +391,50 @@ async function main() {
   const seasonType = DEFAULT_SEASON_TYPE;
 
   console.log(`=== elarostats game logs sync (${season}, ${seasonType}) ===`);
-  console.log(`Mode: ${isBackfill ? "backfill (all games in game_stats)" : "incremental (today's scoreboard)"}\n`);
+  console.log(`Mode: ${isBackfill ? "backfill (re-sync all)" : "incremental"}\n`);
 
   try {
-    let gamesToProcess: { gameId: string; gameDate: string }[] = [];
+    // 1. Get ALL completed regular-season games from the NBA schedule
+    console.log("Fetching NBA season schedule…");
+    const allCompleted = await fetchCompletedGamesFromSchedule();
+    console.log(`Found ${allCompleted.length} completed regular-season games in schedule.`);
 
-    if (isBackfill) {
-      // Backfill: re-sync all games from game_stats
-      const allGames = await getAllGameStatsIds();
-      console.log(`Found ${allGames.length} games in game_stats.`);
-      gamesToProcess = allGames;
-    } else {
-      // Incremental: only today's completed games from NBA CDN scoreboard
-      console.log("Fetching today's scoreboard from NBA CDN…");
-      const games = await fetchScoreboard();
-      const finalGames = games.filter((g) => g.gameStatus === 3);
-
-      if (finalGames.length === 0) {
-        console.log("No completed games found on today's scoreboard. Nothing to sync.");
-        return;
-      }
-
-      console.log(`Found ${finalGames.length} completed game(s) on scoreboard.`);
-
-      gamesToProcess = finalGames.map((g) => ({
-        gameId: g.gameId,
-        gameDate: parseDateFromGameCode(g.gameCode),
-      }));
-    }
-
-    // Skip games already in player_game_logs
-    const gameIds = gamesToProcess.map((g) => g.gameId);
-    const alreadySynced = await getAlreadySyncedGameIds(gameIds);
-    const newGames = gamesToProcess.filter((g) => !alreadySynced.has(g.gameId));
-
-    if (newGames.length === 0) {
-      console.log("All games are already synced. Nothing to do.");
+    if (allCompleted.length === 0) {
+      console.log("No completed games in schedule. Nothing to sync.");
       return;
     }
 
-    console.log(
-      `Syncing ${newGames.length} new game(s) (${alreadySynced.size} already cached).\n`,
-    );
+    // 2. Find which games are missing from player_game_logs
+    let gamesToProcess: { gameId: string; gameDate: string }[];
 
+    if (isBackfill) {
+      // Backfill: re-sync everything (ignore what's already cached)
+      gamesToProcess = allCompleted;
+      console.log(`Backfill mode: will process all ${gamesToProcess.length} games.\n`);
+    } else {
+      console.log("Checking which games are already synced…");
+      const alreadySynced = await getAlreadySyncedGameIds();
+      gamesToProcess = allCompleted.filter((g) => !alreadySynced.has(g.gameId));
+
+      if (gamesToProcess.length === 0) {
+        console.log("All games are already synced. Nothing to do.");
+        return;
+      }
+
+      console.log(
+        `${gamesToProcess.length} new game(s) to sync (${alreadySynced.size} already cached).\n`,
+      );
+    }
+
+    // 3. Fetch boxscore for each missing game and upsert
     let totalPlayerRows = 0;
     let totalTeamRows = 0;
     let synced = 0;
     let failed = 0;
 
-    for (const game of newGames) {
+    for (const game of gamesToProcess) {
       try {
-        console.log(`  [${synced + failed + 1}/${newGames.length}] Fetching boxscore ${game.gameId} (${game.gameDate})…`);
+        console.log(`  [${synced + failed + 1}/${gamesToProcess.length}] Fetching boxscore ${game.gameId} (${game.gameDate})…`);
         const result = await processGame(game.gameId, game.gameDate, season, seasonType);
         totalPlayerRows += result.playerRows;
         totalTeamRows += result.teamRows;
@@ -510,7 +448,7 @@ async function main() {
       }
 
       // Small delay between games to be respectful to the CDN
-      if (synced + failed < newGames.length) {
+      if (synced + failed < gamesToProcess.length) {
         await sleep(500);
       }
     }
