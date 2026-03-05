@@ -334,7 +334,11 @@ async function processGame(
   seasonType: string,
 ): Promise<{ playerRows: number; teamRows: number }> {
   const boxscore = await fetchBoxscore(gameId);
-  const game = boxscore.game;
+  const game = boxscore?.game;
+
+  if (!game || !game.homeTeam || !game.awayTeam) {
+    throw new Error(`Invalid boxscore response for ${gameId}: missing game/team data`);
+  }
 
   const home = game.homeTeam;
   const away = game.awayTeam;
@@ -345,8 +349,9 @@ async function processGame(
   // --- Player rows ---
   const playerRows: Record<string, unknown>[] = [];
 
-  for (const player of home.players) {
-    if (player.status !== "ACTIVE" || player.played !== "1") continue;
+  for (const player of home.players ?? []) {
+    if (player.status !== "ACTIVE" || String(player.played) !== "1") continue;
+    if (!player.statistics) continue;
     playerRows.push(
       mapPlayerRow(player, gameId, date, away.teamTricode, home.score, away.score, season, seasonType),
     );
@@ -357,8 +362,9 @@ async function processGame(
     }
   }
 
-  for (const player of away.players) {
-    if (player.status !== "ACTIVE" || player.played !== "1") continue;
+  for (const player of away.players ?? []) {
+    if (player.status !== "ACTIVE" || String(player.played) !== "1") continue;
+    if (!player.statistics) continue;
     playerRows.push(
       mapPlayerRow(player, gameId, date, home.teamTricode, away.score, home.score, season, seasonType),
     );
@@ -442,9 +448,10 @@ async function main() {
         console.log(`    ✓ ${result.playerRows} player rows, ${result.teamRows} team rows`);
       } catch (err) {
         failed++;
-        console.error(
-          `    ✗ Failed: ${err instanceof Error ? err.message : err}`,
-        );
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const errStack = err instanceof Error ? err.stack : "";
+        console.error(`    ✗ Failed: ${errMsg}`);
+        if (errStack) console.error(`      ${errStack.split("\n").slice(0, 3).join("\n      ")}`);
       }
 
       // Small delay between games to be respectful to the CDN
