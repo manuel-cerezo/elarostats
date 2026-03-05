@@ -422,7 +422,7 @@ export default function GamesView() {
   const { t, locale } = useTranslation();
 
   // Supabase-first: uses cached games when available, falls back to PBPStats for live data
-  const { data: games, isLoading, isError } = useTodayGames();
+  const { data: games, isLoading, isError, gameDate } = useTodayGames();
 
   // Historical game dates from Supabase
   const { data: historicalDates } = useHistoricalGameDates();
@@ -445,30 +445,34 @@ export default function GamesView() {
     );
   }
 
-  const today = new Date().toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
+  // Today in ET (YYYY-MM-DD) — used to exclude from historical list
+  const todayET = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+
+  // Show the actual game date (may differ from today if showing yesterday's completed games)
+  const displayDate = gameDate && gameDate !== todayET ? new Date(gameDate + "T12:00:00") : new Date();
+  const formattedDisplayDate = displayDate.toLocaleDateString(locale === "en" ? "en-US" : "es-ES", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
-  // Today in ET (YYYY-MM-DD) — used to exclude from historical list
-  const todayET = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
-
   const liveGames = games?.filter((g) => g.isLive) ?? [];
   const pregameGames = games?.filter((g) => g.isPregame) ?? [];
   const finalGames = games?.filter((g) => g.isFinal) ?? [];
   const hasGamesToday = games != null && games.length > 0;
 
-  // Filter out today's date from historical dates to avoid duplication
-  const pastDates = historicalDates?.filter((d) => d !== todayET) ?? [];
+  // Filter out today's date and the displayed games' date from historical dates
+  const excludeDates = new Set([todayET]);
+  if (gameDate) excludeDates.add(gameDate);
+  const pastDates = historicalDates?.filter((d) => !excludeDates.has(d)) ?? [];
 
   return (
     <div>
       <div className="mb-6 flex items-baseline justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t("gamesPageTitle")}</h1>
-          <p className="mt-0.5 text-sm capitalize text-gray-500">{today}</p>
+          <p className="mt-0.5 text-sm capitalize text-gray-500">{formattedDisplayDate}</p>
         </div>
       </div>
 

@@ -1,14 +1,19 @@
 /**
  * sync-games.ts
  *
- * Fetches completed NBA game data from PBPStats and caches it in Supabase.
+ * Fetches completed NBA game data and caches it in Supabase.
  * Runs daily after games end to avoid redundant PBPStats API calls from the
  * client for games that are already final.
+ *
+ * Uses the NBA CDN scoreboard to discover which games were played (reliable,
+ * always available even after PBPStats rolls over to the next day), then
+ * fetches detailed stats from PBPStats for each game.
  *
  * Data stored per game:
  *   - team box score (team result type)
  *   - player box score (player result type)
  *   - game flow / score progression (game-flow result type)
+ *   - possession-by-possession data
  *
  *   npm run sync:games
  */
@@ -30,22 +35,38 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const PBPSTATS_BASE = "https://api.pbpstats.com";
+const NBA_SCOREBOARD_URL =
+  "https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json";
 
 // ---------------------------------------------------------------------------
-// PBPStats types (mirrors src/types/games.ts)
+// NBA CDN types
 // ---------------------------------------------------------------------------
 
-interface GameItem {
-  gameid: string;
-  time: string;
-  home: string;
-  away: string;
+interface NbaTeam {
+  teamId: number;
+  teamTricode: string;
+  score: number;
 }
 
-interface TodaysGamesResponse {
-  live_games: number;
-  game_data: GameItem[];
+interface NbaGame {
+  gameId: string;
+  gameCode: string;
+  gameStatus: number; // 1=scheduled, 2=in-progress, 3=final
+  gameStatusText: string;
+  homeTeam: NbaTeam;
+  awayTeam: NbaTeam;
 }
+
+interface NbaScoreboard {
+  scoreboard: {
+    gameDate: string; // YYYY-MM-DD
+    games: NbaGame[];
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PBPStats types
+// ---------------------------------------------------------------------------
 
 interface LiveGameResponse {
   status: string;
@@ -55,19 +76,6 @@ interface LiveGameResponse {
 // ---------------------------------------------------------------------------
 // Fetch helpers
 // ---------------------------------------------------------------------------
-
-function parseTeamField(field: string): { abbr: string; score: number } {
-  const parts = field.trim().split(" ");
-  return { abbr: parts[0] ?? "", score: parseInt(parts[1] ?? "0", 10) };
-}
-
-async function fetchTodaysGames(): Promise<TodaysGamesResponse> {
-  const res = await fetch(`${PBPSTATS_BASE}/live/games/nba`);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch today's games: ${res.status} ${res.statusText}`);
-  }
-  return res.json() as Promise<TodaysGamesResponse>;
-}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -100,6 +108,16 @@ async function fetchWithRetry(
   }
   // unreachable, but satisfies TypeScript
   throw new Error(`Exhausted retries for ${label}`);
+}
+
+/**
+ * Fetch the NBA CDN scoreboard.
+ * This endpoint returns the most recent game day's scoreboard and is always
+ * available — unlike PBPStats /live/games/nba which rolls over to the new day.
+ */
+async function fetchNbaScoreboard(): Promise<NbaScoreboard> {
+  const res = await fetchWithRetry(NBA_SCOREBOARD_URL, "NBA scoreboard");
+  return res.json() as Promise<NbaScoreboard>;
 }
 
 async function fetchGameResult(
@@ -181,14 +199,16 @@ async function syncGame(
 async function main() {
   console.log("=== elarostats game stats sync ===\n");
 
-  // 1. Get today's (or last night's) games from PBPStats
-  console.log("Fetching games from PBPStats…");
-  const response = await fetchTodaysGames();
+  // 1. Get the scoreboard from NBA CDN (always has the latest completed day)
+  console.log("Fetching scoreboard from NBA CDN…");
+  const scoreboard = await fetchNbaScoreboard();
+  const gameDate = scoreboard.scoreboard.gameDate;
+  const allGames = scoreboard.scoreboard.games;
 
-  // 2. Filter for completed games only
-  const finalGames = response.game_data.filter((g) =>
-    g.time.trim().toLowerCase().startsWith("final"),
-  );
+  console.log(`Scoreboard date: ${gameDate}, total games: ${allGames.length}`);
+
+  // 2. Filter for completed games only (gameStatus === 3)
+  const finalGames = allGames.filter((g) => g.gameStatus === 3);
 
   if (finalGames.length === 0) {
     console.log("No completed games found. Nothing to sync.");
@@ -198,10 +218,10 @@ async function main() {
   console.log(`Found ${finalGames.length} completed game(s).\n`);
 
   // 3. Skip games already in Supabase
-  const allIds = finalGames.map((g) => g.gameid);
+  const allIds = finalGames.map((g) => g.gameId);
   const alreadySynced = await getAlreadySyncedIds(allIds);
 
-  const toSync = finalGames.filter((g) => !alreadySynced.has(g.gameid));
+  const toSync = finalGames.filter((g) => !alreadySynced.has(g.gameId));
 
   if (toSync.length === 0) {
     console.log("All completed games are already cached in Supabase. Nothing to do.");
@@ -210,25 +230,26 @@ async function main() {
 
   console.log(`Syncing ${toSync.length} new game(s) (${alreadySynced.size} already cached):\n`);
 
-  // Compute game date: the script runs at 5:30 UTC (morning after games).
-  // NBA games start in US primetime and run through early UTC the next day.
-  // Yesterday in UTC is therefore the actual game date for all final games.
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const gameDate = yesterday.toISOString().split("T")[0]; // YYYY-MM-DD
-
   // 4. Sync each game (serially to avoid hammering PBPStats)
   let synced = 0;
   let failed = 0;
 
   for (const game of toSync) {
-    const home = parseTeamField(game.home);
-    const away = parseTeamField(game.away);
-
     try {
-      await syncGame(game.gameid, home.abbr, away.abbr, home.score, away.score, gameDate);
+      await syncGame(
+        game.gameId,
+        game.homeTeam.teamTricode,
+        game.awayTeam.teamTricode,
+        game.homeTeam.score,
+        game.awayTeam.score,
+        gameDate,
+      );
       synced++;
     } catch (err) {
-      console.error(`  ✗ Failed to sync ${game.gameid}:`, err instanceof Error ? err.message : err);
+      console.error(
+        `  ✗ Failed to sync ${game.gameId}:`,
+        err instanceof Error ? err.message : err,
+      );
       failed++;
     }
   }
