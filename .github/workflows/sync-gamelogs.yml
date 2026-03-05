@@ -9,7 +9,7 @@ on:
 
 jobs:
   sync:
-    name: Sync player & team game logs from pbpstats → Supabase
+    name: Sync player & team game logs from PBPStats → Supabase
     runs-on: ubuntu-latest
 
     steps:

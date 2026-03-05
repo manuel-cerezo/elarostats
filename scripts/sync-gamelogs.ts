@@ -1,7 +1,7 @@
 /**
  * sync-gamelogs.ts
  *
- * Fetches per-game logs for every NBA player and team from the NBA Stats API
+ * Fetches per-game logs for every NBA player and team from the PBPStats API
  * and caches them in Supabase (player_game_logs, team_game_logs).
  *
  * This avoids redundant API calls from the browser — the frontend reads
@@ -9,8 +9,8 @@
  *
  *   npm run sync:gamelogs
  *
- * Volume: 2 API calls total (one bulk endpoint per entity type).
- * Each returns all game logs for all players/teams in the season.
+ * Entity IDs are pulled from Supabase tables populated by sync-pbpstats.
+ * Each entity requires one API call to PBPStats /get-game-logs/nba.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -29,32 +29,19 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const NBA_STATS_BASE = "https://stats.nba.com/stats";
+const PBPSTATS_BASE = "https://api.pbpstats.com";
 const DEFAULT_SEASON = "2025-26";
-const DEFAULT_SEASON_TYPE = "Regular Season";
+const DEFAULT_SEASON_TYPE = "Regular+Season";
 const BATCH_SIZE = 100;
-
-// Headers required by stats.nba.com (returns 403 without them)
-const NBA_STATS_HEADERS: Record<string, string> = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Referer: "https://www.nba.com/",
-  Accept: "application/json, text/plain, */*",
-  "Accept-Language": "en-US,en;q=0.9",
-  Origin: "https://www.nba.com",
-  Connection: "keep-alive",
-};
+const CONCURRENCY = 5;
+const DELAY_BETWEEN_BATCHES_MS = 2_000;
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface NbaStatsResponse {
-  resultSets: Array<{
-    name: string;
-    headers: string[];
-    rowSet: Array<Array<unknown>>;
-  }>;
+interface PbpGameLogsResponse {
+  multi_row_table_data: Array<Record<string, unknown>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +60,7 @@ async function fetchWithRetry(
   delaysMs = [10_000, 30_000, 60_000],
 ): Promise<Response> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const res = await fetch(url, { headers: NBA_STATS_HEADERS });
+    const res = await fetch(url);
     if (res.ok) return res;
 
     const isTransient = res.status >= 500 || res.status === 429;
@@ -93,89 +80,87 @@ async function fetchWithRetry(
   throw new Error(`Exhausted retries for ${label}`);
 }
 
-/** Convert a rowSet row to a keyed object using the headers array. */
-function rowToObject(headers: string[], row: unknown[]): Record<string, unknown> {
-  return Object.fromEntries(headers.map((h, i) => [h, row[i]]));
-}
+// ---------------------------------------------------------------------------
+// Fetch entity IDs from Supabase (populated by sync-pbpstats)
+// ---------------------------------------------------------------------------
 
-/** Extract opponent abbreviation from MATCHUP like "LAL vs. GSW" or "LAL @ DEN" */
-function parseOpponent(matchup: unknown): string | null {
-  if (typeof matchup !== "string") return null;
-  const parts = matchup.split(/\s+(?:vs\.|@)\s+/);
-  return parts.length === 2 ? parts[1].trim() : matchup;
+async function fetchEntityIds(table: string): Promise<number[]> {
+  const { data, error } = await supabase.from(table).select("entity_id");
+
+  if (error) {
+    throw new Error(`Failed to fetch entity IDs from ${table}: ${error.message}`);
+  }
+
+  return (data ?? []).map((row: { entity_id: number }) => row.entity_id);
 }
 
 // ---------------------------------------------------------------------------
-// Fetch game logs from NBA Stats API (bulk — all entities in one call)
+// Fetch game logs from PBPStats (one entity at a time)
 // ---------------------------------------------------------------------------
 
-async function fetchNbaGameLogs(
-  endpoint: "playergamelogs" | "teamgamelogs",
+async function fetchGameLogs(
+  entityType: "Player" | "Team",
+  entityId: number,
   season: string,
   seasonType: string,
 ): Promise<Array<Record<string, unknown>>> {
-  const url = new URL(`${NBA_STATS_BASE}/${endpoint}`);
-  url.searchParams.set("Season", season);
-  url.searchParams.set("SeasonType", seasonType);
-  url.searchParams.set("LeagueID", "00");
+  const params = new URLSearchParams({
+    Season: season,
+    SeasonType: seasonType,
+    EntityType: entityType,
+    EntityId: String(entityId),
+  });
 
-  console.log(`  GET ${url.toString()}`);
-  const res = await fetchWithRetry(url.toString(), endpoint);
-  const data: NbaStatsResponse = await res.json();
+  const url = `${PBPSTATS_BASE}/get-game-logs/nba?${params.toString()}`;
+  const label = `${entityType} ${entityId}`;
 
-  const resultSet = data.resultSets?.[0];
-  if (!resultSet?.rowSet?.length) {
-    return [];
-  }
+  const res = await fetchWithRetry(url, label);
+  const data: PbpGameLogsResponse = await res.json();
 
-  return resultSet.rowSet.map((row) => rowToObject(resultSet.headers, row));
+  return data.multi_row_table_data ?? [];
 }
 
 // ---------------------------------------------------------------------------
-// Mapping functions
+// Mapping functions (PBPStats keys → Supabase columns)
 // ---------------------------------------------------------------------------
 
 function mapPlayerLogRow(
   row: Record<string, unknown>,
+  entityId: number,
   season: string,
   seasonType: string,
 ): Record<string, unknown> {
-  const fgm = (row.FGM as number) ?? 0;
-  const fga = (row.FGA as number) ?? 0;
+  const fg2m = (row.FG2M as number) ?? 0;
+  const fg2a = (row.FG2A as number) ?? 0;
   const fg3m = (row.FG3M as number) ?? 0;
   const fg3a = (row.FG3A as number) ?? 0;
-  const ftm = (row.FTM as number) ?? 0;
+  const ftPoints = (row.FtPoints as number) ?? 0;
   const fta = (row.FTA as number) ?? 0;
-  const pts = (row.PTS as number) ?? 0;
-
-  const efgPct = fga > 0 ? Math.round(((fgm + 0.5 * fg3m) / fga) * 1000) / 1000 : null;
-  const tsDenom = 2 * (fga + 0.44 * fta);
-  const tsPct = tsDenom > 0 ? Math.round((pts / tsDenom) * 1000) / 1000 : null;
 
   return {
-    entity_id: row.PLAYER_ID,
-    game_id: row.GAME_ID,
+    entity_id: entityId,
+    game_id: row.GameId,
     season,
-    season_type: seasonType,
-    date: row.GAME_DATE ?? null,
-    opponent: parseOpponent(row.MATCHUP),
-    points: pts,
-    rebounds: row.REB ?? null,
-    assists: row.AST ?? null,
-    steals: row.STL ?? null,
-    blocks: row.BLK ?? null,
-    turnovers: row.TOV ?? null,
-    minutes: row.MIN ?? null,
-    fg2m: fgm - fg3m,
-    fg2a: fga - fg3a,
+    season_type: seasonType.replace(/\+/g, " "),
+    date: row.Date ?? null,
+    opponent: row.Opponent ?? null,
+    points: row.Points ?? null,
+    rebounds: row.Rebounds ?? null,
+    assists: row.Assists ?? null,
+    steals: row.Steals ?? null,
+    blocks: row.Blocks ?? null,
+    turnovers: row.Turnovers ?? null,
+    minutes: row.Minutes ?? null,
+    fg2m,
+    fg2a,
     fg3m,
     fg3a,
-    ft_points: ftm,
+    ft_points: ftPoints,
     fta,
-    efg_pct: efgPct,
-    ts_pct: tsPct,
-    plus_minus: row.PLUS_MINUS ?? null,
-    wl: row.WL ?? null,
+    efg_pct: row.EfgPct ?? null,
+    ts_pct: row.TsPct ?? null,
+    plus_minus: row.PlusMinus ?? null,
+    wl: null,
     raw_data: row,
     synced_at: new Date().toISOString(),
   };
@@ -183,42 +168,38 @@ function mapPlayerLogRow(
 
 function mapTeamLogRow(
   row: Record<string, unknown>,
+  entityId: number,
   season: string,
   seasonType: string,
 ): Record<string, unknown> {
-  const fgm = (row.FGM as number) ?? 0;
-  const fga = (row.FGA as number) ?? 0;
+  const fg2m = (row.FG2M as number) ?? 0;
+  const fg2a = (row.FG2A as number) ?? 0;
   const fg3m = (row.FG3M as number) ?? 0;
   const fg3a = (row.FG3A as number) ?? 0;
-  const ftm = (row.FTM as number) ?? 0;
+  const ftPoints = (row.FtPoints as number) ?? 0;
   const fta = (row.FTA as number) ?? 0;
-  const pts = (row.PTS as number) ?? 0;
-
-  const efgPct = fga > 0 ? Math.round(((fgm + 0.5 * fg3m) / fga) * 1000) / 1000 : null;
-  const tsDenom = 2 * (fga + 0.44 * fta);
-  const tsPct = tsDenom > 0 ? Math.round((pts / tsDenom) * 1000) / 1000 : null;
 
   return {
-    entity_id: row.TEAM_ID,
-    game_id: row.GAME_ID,
+    entity_id: entityId,
+    game_id: row.GameId,
     season,
-    season_type: seasonType,
-    date: row.GAME_DATE ?? null,
-    opponent: parseOpponent(row.MATCHUP),
-    points: pts,
-    rebounds: row.REB ?? null,
-    assists: row.AST ?? null,
-    steals: row.STL ?? null,
-    turnovers: row.TOV ?? null,
-    fg2m: fgm - fg3m,
-    fg2a: fga - fg3a,
+    season_type: seasonType.replace(/\+/g, " "),
+    date: row.Date ?? null,
+    opponent: row.Opponent ?? null,
+    points: row.Points ?? null,
+    rebounds: row.Rebounds ?? null,
+    assists: row.Assists ?? null,
+    steals: row.Steals ?? null,
+    turnovers: row.Turnovers ?? null,
+    fg2m,
+    fg2a,
     fg3m,
     fg3a,
-    ft_points: ftm,
+    ft_points: ftPoints,
     fta,
-    efg_pct: efgPct,
-    ts_pct: tsPct,
-    wl: row.WL ?? null,
+    efg_pct: row.EfgPct ?? null,
+    ts_pct: row.TsPct ?? null,
+    wl: null,
     raw_data: row,
     synced_at: new Date().toISOString(),
   };
@@ -249,6 +230,73 @@ async function upsertBatch(
 }
 
 // ---------------------------------------------------------------------------
+// Process entities with concurrency control
+// ---------------------------------------------------------------------------
+
+async function processEntities(
+  entityType: "Player" | "Team",
+  entityIds: number[],
+  table: string,
+  mapFn: (
+    row: Record<string, unknown>,
+    entityId: number,
+    season: string,
+    seasonType: string,
+  ) => Record<string, unknown>,
+  season: string,
+  seasonType: string,
+): Promise<number> {
+  let totalRows = 0;
+  let failed = 0;
+
+  // Process in concurrent batches
+  for (let i = 0; i < entityIds.length; i += CONCURRENCY) {
+    const batch = entityIds.slice(i, i + CONCURRENCY);
+
+    const results = await Promise.allSettled(
+      batch.map(async (entityId) => {
+        const logs = await fetchGameLogs(entityType, entityId, season, seasonType);
+        return { entityId, logs };
+      }),
+    );
+
+    const allRows: Record<string, unknown>[] = [];
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        const { entityId, logs } = result.value;
+        const mapped = logs.map((row) => mapFn(row, entityId, season, seasonType));
+        allRows.push(...mapped);
+      } else {
+        failed++;
+        console.warn(`  ⚠ ${entityType} fetch failed: ${result.reason}`);
+      }
+    }
+
+    if (allRows.length > 0) {
+      await upsertBatch(table, allRows, "entity_id,game_id");
+      totalRows += allRows.length;
+    }
+
+    const processed = Math.min(i + CONCURRENCY, entityIds.length);
+    console.log(
+      `  Progress: ${processed}/${entityIds.length} ${entityType.toLowerCase()}s processed (${totalRows} rows so far)`,
+    );
+
+    // Be kind to PBPStats — pause between batches
+    if (i + CONCURRENCY < entityIds.length) {
+      await sleep(DELAY_BETWEEN_BATCHES_MS);
+    }
+  }
+
+  if (failed > 0) {
+    console.warn(`  ⚠ ${failed} ${entityType.toLowerCase()}(s) failed to fetch`);
+  }
+
+  return totalRows;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -256,42 +304,62 @@ async function main() {
   const season = process.argv[2] || DEFAULT_SEASON;
   const seasonType = process.argv[3] || DEFAULT_SEASON_TYPE;
 
-  console.log(`=== elarostats game logs sync (${season}, ${seasonType}) ===\n`);
+  console.log(`=== elarostats game logs sync (${season}, ${seasonType.replace(/\+/g, " ")}) ===\n`);
 
   try {
-    // ── Player game logs ──────────────────────────────────────────────────
+    // ── Get entity IDs from Supabase ─────────────────────────────────────
 
-    console.log("Fetching all player game logs from NBA Stats API…");
-    const playerRows = await fetchNbaGameLogs("playergamelogs", season, seasonType);
-    console.log(`  Received ${playerRows.length} player game log rows.\n`);
+    console.log("Fetching entity IDs from Supabase…");
+    const [playerIds, teamIds] = await Promise.all([
+      fetchEntityIds("pbp_player_totals"),
+      fetchEntityIds("pbp_team_totals"),
+    ]);
+    console.log(`  Found ${playerIds.length} players, ${teamIds.length} teams.\n`);
 
-    const allPlayerRows = playerRows.map((row) => mapPlayerLogRow(row, season, seasonType));
-
-    if (allPlayerRows.length > 0) {
-      console.log("Upserting player game logs…");
-      await upsertBatch("player_game_logs", allPlayerRows, "entity_id,game_id");
-      console.log(`Player game logs sync complete — ${allPlayerRows.length} rows.\n`);
+    if (playerIds.length === 0 && teamIds.length === 0) {
+      console.error(
+        "No entity IDs found. Make sure sync-pbpstats has run first to populate pbp_player_totals / pbp_team_totals.",
+      );
+      process.exit(1);
     }
 
-    // ── Team game logs ────────────────────────────────────────────────────
+    // ── Team game logs (fewer entities, do first) ────────────────────────
 
-    console.log("Fetching all team game logs from NBA Stats API…");
-    const teamRows = await fetchNbaGameLogs("teamgamelogs", season, seasonType);
-    console.log(`  Received ${teamRows.length} team game log rows.\n`);
-
-    const allTeamRows = teamRows.map((row) => mapTeamLogRow(row, season, seasonType));
-
-    if (allTeamRows.length > 0) {
-      console.log("Upserting team game logs…");
-      await upsertBatch("team_game_logs", allTeamRows, "entity_id,game_id");
-      console.log(`Team game logs sync complete — ${allTeamRows.length} rows.\n`);
+    let teamRows = 0;
+    if (teamIds.length > 0) {
+      console.log(`Fetching game logs for ${teamIds.length} teams…`);
+      teamRows = await processEntities(
+        "Team",
+        teamIds,
+        "team_game_logs",
+        mapTeamLogRow,
+        season,
+        seasonType,
+      );
+      console.log(`Team game logs sync complete — ${teamRows} rows.\n`);
     }
 
-    // ── Summary ───────────────────────────────────────────────────────────
+    // ── Player game logs ─────────────────────────────────────────────────
+
+    let playerRows = 0;
+    if (playerIds.length > 0) {
+      console.log(`Fetching game logs for ${playerIds.length} players…`);
+      playerRows = await processEntities(
+        "Player",
+        playerIds,
+        "player_game_logs",
+        mapPlayerLogRow,
+        season,
+        seasonType,
+      );
+      console.log(`Player game logs sync complete — ${playerRows} rows.\n`);
+    }
+
+    // ── Summary ──────────────────────────────────────────────────────────
 
     console.log("All done!");
-    console.log(`  Players: ${allPlayerRows.length} game log rows`);
-    console.log(`  Teams: ${allTeamRows.length} game log rows`);
+    console.log(`  Players: ${playerRows} game log rows`);
+    console.log(`  Teams: ${teamRows} game log rows`);
   } catch (err) {
     console.error("\nSync failed:", err);
     process.exit(1);
