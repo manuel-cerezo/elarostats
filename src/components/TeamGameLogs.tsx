@@ -83,11 +83,16 @@ export default function TeamGameLogs({ teamId }: TeamGameLogsProps) {
       const fg3m = Number(row.FG3M ?? 0);
       const fg3a = Number(row.FG3A ?? 0);
       const wlRaw = String(row.WL ?? row.wl ?? "").toUpperCase();
+      const plusMinus = Number(row.PlusMinus ?? 0);
+      const wlFromField = wlRaw === "W" ? "W" : wlRaw === "L" ? "L" : null;
+      // Fallback: infer W/L from team point differential when WL field is missing
+      const wl: "W" | "L" | null =
+        wlFromField ?? (plusMinus > 0 ? "W" : plusMinus < 0 ? "L" : null);
       return {
         date: String(row.Date ?? ""),
         gameId: String(row.GameId ?? ""),
         opponent: String(row.Opponent ?? ""),
-        wl: wlRaw === "W" ? "W" : wlRaw === "L" ? "L" : null,
+        wl,
         pts: Number(row.Points ?? 0),
         reb: Number(row.Rebounds ?? 0),
         ast: Number(row.Assists ?? 0),
