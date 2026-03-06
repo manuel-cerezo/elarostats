@@ -355,11 +355,6 @@ async function processGame(
     playerRows.push(
       mapPlayerRow(player, gameId, date, away.teamTricode, home.score, away.score, season, seasonType),
     );
-
-    // Be kind to PBPStats — pause between batches
-    if (i + CONCURRENCY < entityIds.length) {
-      await sleep(DELAY_BETWEEN_BATCHES_MS);
-    }
   }
 
   for (const player of away.players ?? []) {
